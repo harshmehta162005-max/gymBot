@@ -1,29 +1,38 @@
 import axios from 'axios';
 import crypto from 'crypto';
 import { ENV } from '../config/env.js';
+import { logger } from '../utils/logger.js';
 
-const WHATSAPP_API_BASE = `https://graph.facebook.com/v21.0/${ENV.WHATSAPP_PHONE_NUMBER_ID}`;
+// Lazy getter — computed at call time so dotenv is guaranteed to have loaded
+const getApiBase = () => `https://graph.facebook.com/v21.0/${ENV.WHATSAPP_PHONE_NUMBER_ID}`;
 
 /**
  * Send a plain text message to a WhatsApp number.
  */
-export const sendTextMessage = async (to: string, body: string): Promise<string> => {
-  const res = await axios.post(
-    `${WHATSAPP_API_BASE}/messages`,
-    {
-      messaging_product: 'whatsapp',
-      to,
-      type: 'text',
-      text: { body },
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${ENV.WHATSAPP_API_KEY}`,
-        'Content-Type': 'application/json',
+export const sendTextMessage = async (to: string, body: string): Promise<string | null> => {
+  // Ensure country code prefix for India (Meta requires "91XXXXXXXXXX" format, no + sign)
+  const formattedTo = to.startsWith('91') ? to : `91${to}`;
+  try {
+    const res = await axios.post(
+      `${getApiBase()}/messages`,
+      {
+        messaging_product: 'whatsapp',
+        to: formattedTo,
+        type: 'text',
+        text: { body },
       },
-    }
-  );
-  return res.data.messages[0].id;
+      {
+        headers: {
+          Authorization: `Bearer ${ENV.WHATSAPP_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return res.data.messages[0].id;
+  } catch (error: any) {
+    logger.error(`[WhatsApp] Failed to send text to ${to}: ${error.response?.data?.error?.message || error.message}`);
+    return null;
+  }
 };
 
 /**
@@ -34,27 +43,33 @@ export const sendTemplateMessage = async (
   templateName: string,
   languageCode: string = 'en',
   components: any[] = []
-): Promise<string> => {
-  const res = await axios.post(
-    `${WHATSAPP_API_BASE}/messages`,
-    {
-      messaging_product: 'whatsapp',
-      to,
-      type: 'template',
-      template: {
-        name: templateName,
-        language: { code: languageCode },
-        components,
+): Promise<string | null> => {
+  const formattedTo = to.startsWith('91') ? to : `91${to}`;
+  try {
+    const res = await axios.post(
+      `${getApiBase()}/messages`,
+      {
+        messaging_product: 'whatsapp',
+        to: formattedTo,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: languageCode },
+          components,
+        },
       },
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${ENV.WHATSAPP_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
-  return res.data.messages[0].id;
+      {
+        headers: {
+          Authorization: `Bearer ${ENV.WHATSAPP_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return res.data.messages[0].id;
+  } catch (error: any) {
+    logger.error(`[WhatsApp] Failed to send template ${templateName} to ${to}: ${error.response?.data?.error?.message || error.message}`);
+    return null;
+  }
 };
 
 /**
@@ -64,32 +79,38 @@ export const sendButtonMessage = async (
   to: string,
   bodyText: string,
   buttons: { id: string; title: string }[]
-): Promise<string> => {
-  const res = await axios.post(
-    `${WHATSAPP_API_BASE}/messages`,
-    {
-      messaging_product: 'whatsapp',
-      to,
-      type: 'interactive',
-      interactive: {
-        type: 'button',
-        body: { text: bodyText },
-        action: {
-          buttons: buttons.map((b) => ({
-            type: 'reply',
-            reply: { id: b.id, title: b.title },
-          })),
+): Promise<string | null> => {
+  const formattedTo = to.startsWith('91') ? to : `91${to}`;
+  try {
+    const res = await axios.post(
+      `${getApiBase()}/messages`,
+      {
+        messaging_product: 'whatsapp',
+        to: formattedTo,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: { text: bodyText },
+          action: {
+            buttons: buttons.map((b) => ({
+              type: 'reply',
+              reply: { id: b.id, title: b.title },
+            })),
+          },
         },
       },
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${ENV.WHATSAPP_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
-  return res.data.messages[0].id;
+      {
+        headers: {
+          Authorization: `Bearer ${ENV.WHATSAPP_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return res.data.messages[0].id;
+  } catch (error: any) {
+    logger.error(`[WhatsApp] Failed to send buttons to ${to}: ${error.response?.data?.error?.message || error.message}`);
+    return null;
+  }
 };
 
 /**
@@ -99,16 +120,20 @@ export const validateWebhookSignature = (
   rawBody: Buffer,
   signature: string
 ): boolean => {
-  const expectedSig =
-    'sha256=' +
-    crypto
-      .createHmac('sha256', ENV.WHATSAPP_API_KEY)
-      .update(rawBody)
-      .digest('hex');
-  return crypto.timingSafeEqual(
-    Buffer.from(expectedSig),
-    Buffer.from(signature)
-  );
+  try {
+    const expectedSig =
+      'sha256=' +
+      crypto
+        .createHmac('sha256', ENV.WHATSAPP_APP_SECRET)
+        .update(rawBody)
+        .digest('hex');
+    return crypto.timingSafeEqual(
+      Buffer.from(expectedSig),
+      Buffer.from(signature)
+    );
+  } catch {
+    return false;
+  }
 };
 
 /**

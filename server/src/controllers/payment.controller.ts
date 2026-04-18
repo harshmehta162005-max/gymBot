@@ -42,7 +42,7 @@ export const createPayment = asyncHandler(async (req: Request, res: Response) =>
     description: description || `Gym plan renewal for ${member.name}`,
     callbackUrl,
     expireByDate,
-    referenceId: memberId,
+    referenceId: `${memberId}_${Date.now()}`,
   });
 
   const payment = await Payment.create({
@@ -54,11 +54,14 @@ export const createPayment = asyncHandler(async (req: Request, res: Response) =>
   });
 
   // Send UPI link via WhatsApp
-  if (member.whatsappOptIn) {
+  try {
     await sendTextMessage(
       member.phone,
       `Hi ${member.name}! Your gym payment of ₹${amount} is due.\nPay here: ${razorpayLinkUrl}`
     );
+  } catch (err) {
+    // Don't fail the whole request if WhatsApp fails
+    logger.error(`[Payment] WhatsApp send failed for ${member.phone}: ${err}`);
   }
 
   res.status(201).json({ success: true, data: payment });
@@ -92,9 +95,9 @@ export const paymentCallback = asyncHandler(async (req: Request, res: Response) 
     return;
   }
 
-  // Update payment status
+  // Update payment status (idempotent — only update if not already paid)
   const payment = await Payment.findOneAndUpdate(
-    { razorpayLinkId: razorpay_payment_link_id },
+    { razorpayLinkId: razorpay_payment_link_id, status: { $ne: 'paid' } },
     { status: 'paid', paidAt: new Date() },
     { new: true }
   );
@@ -116,4 +119,70 @@ export const paymentCallback = asyncHandler(async (req: Request, res: Response) 
   }
 
   res.json({ success: true, message: 'Payment confirmed' });
+});
+
+/**
+ * POST /api/payments/:id/resend
+ * Resend existing payment link via WhatsApp.
+ */
+export const resendPayment = asyncHandler(async (req: Request, res: Response) => {
+  const payment = await Payment.findById(req.params.id).populate('memberId');
+  if (!payment) {
+    res.status(404).json({ success: false, message: 'Payment not found', code: 'NOT_FOUND' });
+    return;
+  }
+  if (payment.status !== 'pending') {
+    res.status(400).json({ success: false, message: 'Can only resend pending payments', code: 'BAD_REQUEST' });
+    return;
+  }
+  const member = payment.memberId as any;
+  if (!member || !payment.razorpayLinkUrl) {
+    res.status(400).json({ success: false, message: 'Member or link not found', code: 'BAD_REQUEST' });
+    return;
+  }
+
+  try {
+    await sendTextMessage(
+      member.phone,
+      `Hi ${member.name}! Reminder — your gym payment of ₹${payment.amount} is pending.\nPay here: ${payment.razorpayLinkUrl}`
+    );
+  } catch (err) {
+    logger.error(`[Payment] Resend WhatsApp failed for ${member.phone}: ${err}`);
+  }
+
+  res.json({ success: true, message: 'Payment link resent' });
+});
+
+/**
+ * PUT /api/payments/:id/cancel
+ * Cancel a pending payment link.
+ */
+export const cancelPayment = asyncHandler(async (req: Request, res: Response) => {
+  const payment = await Payment.findById(req.params.id);
+  if (!payment) {
+    res.status(404).json({ success: false, message: 'Payment not found', code: 'NOT_FOUND' });
+    return;
+  }
+  if (payment.status === 'paid') {
+    res.status(400).json({ success: false, message: 'Cannot cancel a paid payment', code: 'BAD_REQUEST' });
+    return;
+  }
+
+  payment.status = 'expired';
+  await payment.save();
+
+  res.json({ success: true, data: payment });
+});
+
+/**
+ * DELETE /api/payments/:id
+ * Delete a payment record.
+ */
+export const deletePayment = asyncHandler(async (req: Request, res: Response) => {
+  const payment = await Payment.findByIdAndDelete(req.params.id);
+  if (!payment) {
+    res.status(404).json({ success: false, message: 'Payment not found', code: 'NOT_FOUND' });
+    return;
+  }
+  res.json({ success: true, message: 'Payment deleted' });
 });

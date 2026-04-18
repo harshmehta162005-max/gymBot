@@ -1,11 +1,56 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+
+import Navbar from './components/Navbar';
+import ProtectedRoute from './components/ProtectedRoute';
+
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Members from './pages/Members';
+import Payments from './pages/Payments';
+import Attendance from './pages/Attendance';
+import Reports from './pages/Reports';
+
+// Layout wrapper for protected pages (includes Sidebar)
+const AppLayout = () => {
+  return (
+    <div className="flex min-h-screen bg-gray-950">
+      <Navbar />
+      <main className="flex-1 ml-64 p-8 overflow-y-auto h-screen">
+        <div className="max-w-6xl mx-auto">
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  );
+};
 
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <h1 className="text-4xl font-bold text-blue-600">Gym Bot Dashboard</h1>
-      </div>
+      <Toaster 
+        position="top-right" 
+        toastOptions={{
+          style: {
+            background: '#1f2937',
+            color: '#fff',
+            border: '1px solid #374151'
+          }
+        }} 
+      />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        
+        {/* Protected Routes */}
+        <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/members" element={<Members />} />
+          <Route path="/payments" element={<Payments />} />
+          <Route path="/attendance" element={<Attendance />} />
+          <Route path="/reports" element={<Reports />} />
+        </Route>
+      </Routes>
     </Router>
   );
 }

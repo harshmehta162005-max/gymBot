@@ -13,13 +13,16 @@ const app = express();
 // Security headers
 app.use(helmet());
 
-// CORS
-app.use(cors());
+// CORS — restrict to client origin in production
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true,
+}));
 
 // Rate limiting: 100 req/15min globally
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests', code: 'RATE_LIMITED' },

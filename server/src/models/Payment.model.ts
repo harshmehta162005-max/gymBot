@@ -7,6 +7,9 @@ export interface IPayment extends Document {
   razorpayLinkUrl: string;
   status: 'pending' | 'paid' | 'expired';
   paidAt?: Date;
+  // Enhancement 3: Partial vs Full payment tracking
+  paymentType: 'full' | 'partial' | 'razorpay';
+  note?: string;
 }
 
 const PaymentSchema = new Schema<IPayment>(
@@ -23,11 +26,11 @@ const PaymentSchema = new Schema<IPayment>(
     },
     razorpayLinkId: {
       type: String,
-      required: true,
+      default: '',
     },
     razorpayLinkUrl: {
       type: String,
-      required: true,
+      default: '',
     },
     status: {
       type: String,
@@ -37,6 +40,17 @@ const PaymentSchema = new Schema<IPayment>(
     paidAt: {
       type: Date,
       default: null,
+    },
+    // Enhancement 3: Track payment type
+    paymentType: {
+      type: String,
+      enum: ['full', 'partial', 'razorpay'],
+      default: 'razorpay',
+    },
+    note: {
+      type: String,
+      default: '',
+      trim: true,
     },
   },
   { timestamps: true }

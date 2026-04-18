@@ -38,8 +38,8 @@ export const createPaymentLink = async (options: CreatePaymentLinkOptions) => {
     callback_url: options.callbackUrl,
     callback_method: 'get',
     expire_by: expireBy,
-    reference_id: options.referenceId,
-    upi_link: true, // UPI deep link
+    reference_id: options.referenceId
+    // note: upi_link: true is NOT supported in Test Mode and will throw BAD_REQUEST_ERROR
   });
 
   return {
