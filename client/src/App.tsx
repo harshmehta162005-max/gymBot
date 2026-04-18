@@ -11,6 +11,8 @@ import Members from './pages/Members';
 import Payments from './pages/Payments';
 import Attendance from './pages/Attendance';
 import Reports from './pages/Reports';
+import History from './pages/History';
+import Settings from './pages/Settings';
 
 // Layout wrapper for protected pages (includes Sidebar)
 const AppLayout = () => {
@@ -49,6 +51,8 @@ function App() {
           <Route path="/payments" element={<Payments />} />
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/history" element={<History />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>
     </Router>

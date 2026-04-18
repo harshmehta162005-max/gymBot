@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, CalendarCheck, LogOut, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, CalendarCheck, LogOut, FileText, Clock, Settings } from 'lucide-react';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -7,6 +7,8 @@ const navItems = [
   { to: '/payments', label: 'Payments', icon: CreditCard },
   { to: '/attendance', label: 'Attendance', icon: CalendarCheck },
   { to: '/reports', label: 'Reports', icon: FileText },
+  { to: '/history', label: 'History', icon: Clock },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
 const Navbar: React.FC = () => {
@@ -26,12 +28,10 @@ const Navbar: React.FC = () => {
     <aside className="fixed left-0 top-0 h-screen w-64 bg-gray-900 border-r border-gray-800 flex flex-col z-50">
       {/* Logo */}
       <div className="p-6 border-b border-gray-800">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-brand-400 to-brand-600 bg-clip-text text-transparent">
-          💪 GymWaBot
+        <h1 className="text-xl font-bold bg-gradient-to-r from-brand-400 to-brand-600 bg-clip-text text-transparent leading-tight break-words">
+          💪 {owner?.gymName || 'GymWaBot'}
         </h1>
-        {owner && (
-          <p className="text-xs text-gray-500 mt-1 truncate">{owner.gymName}</p>
-        )}
+        <p className="text-[10px] text-gray-600 mt-1">Powered by GymWaBot</p>
       </div>
 
       {/* Nav links */}

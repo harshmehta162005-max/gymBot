@@ -40,6 +40,11 @@ export interface IMember extends Document {
 
   // Enhancement 5: Notes (timestamped history log)
   notes: INote[];
+
+  // Attendance streak tracking
+  currentStreak: number;
+  longestStreak: number;
+  lastAttendanceDate: string | null; // YYYY-MM-DD IST
 }
 
 const MemberSchema = new Schema<IMember>(
@@ -115,6 +120,22 @@ const MemberSchema = new Schema<IMember>(
     notes: {
       type: [NoteSchema],
       default: [],
+    },
+
+    // Attendance streak tracking
+    currentStreak: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    longestStreak: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    lastAttendanceDate: {
+      type: String,
+      default: null,
     },
   },
   { timestamps: true }

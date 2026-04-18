@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { auth } from '../middleware/auth.js';
-import { login, register } from '../controllers/auth.controller.js';
+import { login, register, getOwnerSettings, updateOwnerSettings, changePassword } from '../controllers/auth.controller.js';
 import {
   getMembers,
   getMember,
@@ -14,7 +14,8 @@ import {
   updateDueDate,
 } from '../controllers/member.controller.js';
 import { getPayments, createPayment, paymentCallback, resendPayment, cancelPayment, deletePayment } from '../controllers/payment.controller.js';
-import { getAttendance, markAttendance, scanAttendance } from '../controllers/attendance.controller.js';
+import { getAttendance, markAttendance, scanAttendance, getAttendanceStats } from '../controllers/attendance.controller.js';
+import { getActivityLogs, clearActivityLogs } from '../controllers/activity.controller.js';
 import { runReminderJob } from '../services/cron.service.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 
@@ -54,9 +55,19 @@ router.post('/payments/:id/resend', resendPayment);
 router.put('/payments/:id/cancel', cancelPayment);
 router.delete('/payments/:id', deletePayment);
 
+// Activity / History
+router.get('/activity', getActivityLogs);
+router.delete('/activity', clearActivityLogs);
+
 // Attendance
+router.get('/attendance/stats', getAttendanceStats);
 router.get('/attendance', getAttendance);
 router.post('/attendance', markAttendance);
+
+// Owner settings
+router.get('/owner/settings', getOwnerSettings);
+router.put('/owner/settings', updateOwnerSettings);
+router.put('/owner/change-password', changePassword);
 
 // --- Admin: manual trigger for reminders (per cron-scheduler skill spec) ---
 router.post('/admin/trigger-reminders', asyncHandler(async (_req, res) => {

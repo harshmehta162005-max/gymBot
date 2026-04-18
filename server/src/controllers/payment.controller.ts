@@ -6,6 +6,7 @@ import { sendTextMessage } from '../services/whatsapp.service.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { logger } from '../utils/logger.js';
 import { ENV } from '../config/env.js';
+import { logActivity } from './activity.controller.js';
 
 /**
  * GET /api/payments
@@ -55,14 +56,29 @@ export const createPayment = asyncHandler(async (req: Request, res: Response) =>
 
   // Send UPI link via WhatsApp
   try {
-    await sendTextMessage(
-      member.phone,
-      `Hi ${member.name}! Your gym payment of ₹${amount} is due.\nPay here: ${razorpayLinkUrl}`
-    );
+    const dueDate = member.endDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    const linkMsg = [
+      `🏋️ *Gym Payment Reminder*`,
+      ``,
+      `Hi ${member.name},`,
+      `A payment link has been generated for your gym membership.`,
+      ``,
+      `💰 *Amount:* ₹${amount}`,
+      `📆 *Due Date:* ${dueDate}`,
+      ``,
+      `👉 *Pay Now:* ${razorpayLinkUrl}`,
+      ``,
+      `Please complete the payment at the earliest. Thank you! 🙏`,
+    ].join('\n');
+
+    await sendTextMessage(member.phone, linkMsg);
   } catch (err) {
     // Don't fail the whole request if WhatsApp fails
     logger.error(`[Payment] WhatsApp send failed for ${member.phone}: ${err}`);
   }
+
+  await logActivity({ memberId: memberId, memberName: member.name, action: 'payment_created', amount, note: `Razorpay link generated` });
 
   res.status(201).json({ success: true, data: payment });
 });
@@ -103,17 +119,47 @@ export const paymentCallback = asyncHandler(async (req: Request, res: Response) 
   );
 
   if (payment) {
-    // Extend member plan by 30 days from today
+    // Extend member plan by 30 days from today + clear outstanding
     const member = await Member.findById(payment.memberId);
     if (member) {
       const newEnd = new Date();
       newEnd.setDate(newEnd.getDate() + 30);
       member.endDate = newEnd;
       member.status = 'active';
+      member.outstandingBalance = 0;
+
+      member.notes.push({
+        text: `₹${payment.amount} received via Razorpay. Plan extended to ${newEnd.toLocaleDateString('en-IN')}.`,
+        createdAt: new Date(),
+        context: 'payment',
+      });
+
       await member.save();
 
-      if (member.whatsappOptIn) {
-        await sendTextMessage(member.phone, `✅ Payment received! Your plan is now active until ${newEnd.toLocaleDateString('en-IN')}.`);
+      await logActivity({ memberId: member._id.toString(), memberName: member.name, action: 'payment_received', amount: payment.amount, note: 'Razorpay online payment' });
+
+      try {
+        const paidDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        const dueDateStr = newEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+        const receiptMsg = [
+          `✅ *Payment Received*`,
+          ``,
+          `Hi ${member.name},`,
+          `Your online payment has been received successfully.`,
+          ``,
+          `💰 *Amount Paid:* ₹${payment.amount}`,
+          `📅 *Paid On:* ${paidDate}`,
+          `💳 *Mode:* Online (Razorpay)`,
+          `📆 *Plan Valid Till:* ${dueDateStr}`,
+          `🏋️ *Status:* Active — All Clear`,
+          ``,
+          `Thank you for the payment! 💪`,
+        ].join('\n');
+
+        await sendTextMessage(member.phone, receiptMsg);
+      } catch {
+        // Non-blocking
       }
     }
   }
@@ -142,10 +188,20 @@ export const resendPayment = asyncHandler(async (req: Request, res: Response) =>
   }
 
   try {
-    await sendTextMessage(
-      member.phone,
-      `Hi ${member.name}! Reminder — your gym payment of ₹${payment.amount} is pending.\nPay here: ${payment.razorpayLinkUrl}`
-    );
+    const resendMsg = [
+      `⏰ *Payment Reminder*`,
+      ``,
+      `Hi ${member.name},`,
+      `This is a friendly reminder that your gym payment is still pending.`,
+      ``,
+      `💰 *Amount Due:* ₹${payment.amount}`,
+      ``,
+      `👉 *Pay Now:* ${payment.razorpayLinkUrl}`,
+      ``,
+      `Please complete the payment to keep your membership active. 🙏`,
+    ].join('\n');
+
+    await sendTextMessage(member.phone, resendMsg);
   } catch (err) {
     logger.error(`[Payment] Resend WhatsApp failed for ${member.phone}: ${err}`);
   }
@@ -171,6 +227,10 @@ export const cancelPayment = asyncHandler(async (req: Request, res: Response) =>
   payment.status = 'expired';
   await payment.save();
 
+  // Get member name for activity log
+  const member = await Member.findById(payment.memberId);
+  await logActivity({ memberId: payment.memberId?.toString(), memberName: member?.name || 'Unknown', action: 'payment_cancelled', amount: payment.amount, note: 'Payment link cancelled' });
+
   res.json({ success: true, data: payment });
 });
 
@@ -179,10 +239,13 @@ export const cancelPayment = asyncHandler(async (req: Request, res: Response) =>
  * Delete a payment record.
  */
 export const deletePayment = asyncHandler(async (req: Request, res: Response) => {
-  const payment = await Payment.findByIdAndDelete(req.params.id);
+  const payment = await Payment.findById(req.params.id);
   if (!payment) {
     res.status(404).json({ success: false, message: 'Payment not found', code: 'NOT_FOUND' });
     return;
   }
+  const member = await Member.findById(payment.memberId);
+  await payment.deleteOne();
+  await logActivity({ memberId: payment.memberId?.toString(), memberName: member?.name || 'Unknown', action: 'payment_deleted', amount: payment.amount, note: `Payment record deleted (status: ${payment.status})` });
   res.json({ success: true, message: 'Payment deleted' });
 });

@@ -52,11 +52,16 @@ interface Pagination {
 
 // ─── Helper: Payment Status ──────────────────────────────────────────
 function getPaymentStatus(m: Member) {
+  // Trial period: mutedUntil is set and member was created recently
+  const isInTrial = m.mutedUntil && new Date(m.mutedUntil) > new Date() && m.outstandingBalance > 0
+    && (new Date().getTime() - new Date(m.startDate).getTime()) < 10 * 24 * 60 * 60 * 1000; // within ~10 days of creation
+  if (isInTrial)
+    return { label: 'Trial Period', color: 'bg-blue-500/10 text-blue-400', key: 'trial' as const };
   if (m.outstandingBalance > 0 && new Date(m.endDate) < new Date())
-    return { label: `Overdue ₹${m.outstandingBalance}`, color: 'bg-red-500/10 text-red-400' };
+    return { label: `Overdue ₹${m.outstandingBalance}`, color: 'bg-red-500/10 text-red-400', key: 'overdue' as const };
   if (m.outstandingBalance > 0)
-    return { label: `Partial ₹${m.outstandingBalance} due`, color: 'bg-amber-500/10 text-amber-400' };
-  return { label: 'Fully Paid', color: 'bg-green-500/10 text-green-400' };
+    return { label: `₹${m.outstandingBalance} due`, color: 'bg-amber-500/10 text-amber-400', key: 'due' as const };
+  return { label: 'Paid ✓', color: 'bg-green-500/10 text-green-400', key: 'paid' as const };
 }
 
 function isMuted(m: Member) {
@@ -64,7 +69,7 @@ function isMuted(m: Member) {
 }
 
 function hasOutstanding(m: Member) {
-  return m.outstandingBalance > 0 || m.monthlyAmount > 0;
+  return m.outstandingBalance > 0;
 }
 
 // ─── Input class (DRY) ──────────────────────────────────────────────
@@ -214,23 +219,26 @@ const Members: React.FC = () => {
 
   // ── Batch "Mark as Paid" ──────────────────────────────────────────
   const handleBatchPaid = () => {
-    const totalDue = selectedMembers.reduce((sum, m) => sum + m.monthlyAmount + m.outstandingBalance, 0);
-    const names = selectedMembers.map(m => m.name).join(', ');
+    // Only include members with outstanding balance
+    const membersWithDues = selectedMembers.filter(m => m.outstandingBalance > 0);
+    if (membersWithDues.length === 0) return toast.error('No selected members have outstanding dues.');
+    
+    const totalDue = membersWithDues.reduce((sum, m) => sum + m.outstandingBalance, 0);
+    const names = membersWithDues.map(m => m.name).join(', ');
 
     setConfirmDialog({
       title: 'Mark as Paid',
-      message: `Record full payment of ₹${totalDue} for ${selectedMembers.length} member(s)?\n\n${names}`,
+      message: `Record full payment of ₹${totalDue} for ${membersWithDues.length} member(s)?\n\n${names}`,
       confirmLabel: `Pay ₹${totalDue}`,
       confirmColor: 'bg-green-600 hover:bg-green-700',
       icon: <CheckCircle2 className="text-green-400" size={24} />,
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          for (const m of selectedMembers) {
-            const due = m.monthlyAmount + m.outstandingBalance;
-            await api.post(`/members/${m._id}/partial-payment`, { amount: due, note: 'Full payment (batch)' });
+          for (const m of membersWithDues) {
+            await api.post(`/members/${m._id}/partial-payment`, { amount: m.outstandingBalance, note: 'Full payment (batch)' });
           }
-          toast.success(`${selectedMembers.length} payment(s) recorded`);
+          toast.success(`${membersWithDues.length} payment(s) recorded`);
           setSelectedIds(new Set());
           fetchMembers(pagination.page);
           fetchStats();
@@ -362,7 +370,8 @@ const Members: React.FC = () => {
 
   // ── Quick Pay Full (with custom confirm) ──────────────────────────
   const handleFullPayment = (m: Member) => {
-    const totalDue = m.monthlyAmount + m.outstandingBalance;
+    if (m.outstandingBalance <= 0) return toast('No outstanding dues for this member.');
+    const totalDue = m.outstandingBalance;
     setConfirmDialog({
       title: 'Mark Full Payment',
       message: `Record full payment of ₹${totalDue} for ${m.name}?`,
@@ -534,16 +543,17 @@ const Members: React.FC = () => {
                 <th className="px-4 py-3 text-left">Payment</th>
                 <th className="px-4 py-3 text-left">Expiry</th>
                 <th className="px-4 py-3 text-left">Reminders</th>
+                <th className="px-4 py-3 text-left">Streak</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
               {loading ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500">
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-500">
                   <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-brand-500 mx-auto" />
                 </td></tr>
               ) : members.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-gray-600">
+                <tr><td colSpan={10} className="px-4 py-12 text-center text-gray-600">
                   No members found. Click &quot;Add Member&quot; to get started!
                 </td></tr>
               ) : members.map(m => {
@@ -595,6 +605,16 @@ const Members: React.FC = () => {
                     <td className="px-4 py-3">
                       <span className="text-[10px] text-gray-500 bg-gray-800 px-2 py-0.5 rounded">{reminderTag}</span>
                     </td>
+                    {/* Streak */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">{(m.currentStreak || 0) >= 7 ? '🔥🔥' : (m.currentStreak || 0) >= 3 ? '🔥' : '💪'}</span>
+                        <span className="text-sm font-bold text-white">{m.currentStreak || 0}</span>
+                        {(m.longestStreak || 0) > (m.currentStreak || 0) && (
+                          <span className="text-[9px] text-gray-600">(best: {m.longestStreak})</span>
+                        )}
+                      </div>
+                    </td>
                     {/* Actions dropdown */}
                     <td className="px-4 py-3 text-right">
                       <button onClick={(e) => {
@@ -612,8 +632,8 @@ const Members: React.FC = () => {
                             className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 hover:text-white">
                             <CreditCard size={14} /> Record Payment
                           </button>
-                          {/* Show "Mark Full Payment" only when there's something to pay */}
-                          {(m.outstandingBalance > 0 || m.monthlyAmount > 0) && (
+                          {/* Show "Mark Full Payment" only when there's outstanding balance */}
+                          {m.outstandingBalance > 0 && (
                             <button onClick={() => { handleFullPayment(m); setActiveDropdown(null); }}
                               className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-green-400 hover:bg-gray-700">
                               <CheckCircle2 size={14} /> Mark Full Payment
@@ -773,31 +793,136 @@ const Members: React.FC = () => {
       )}
 
       {/* ── Record Payment Modal ──────────────────────────────────── */}
-      {showPaymentModal && (
-        <Modal title={`Record Payment — ${showPaymentModal.name}`} onClose={() => setShowPaymentModal(null)}>
-          <div className="mb-4 p-3 bg-gray-800 rounded-lg text-sm">
-            <p className="text-gray-400">Monthly fee: <span className="text-white font-medium">₹{showPaymentModal.monthlyAmount}</span></p>
-            {showPaymentModal.outstandingBalance > 0 && (
-              <p className="text-amber-400">Outstanding: ₹{showPaymentModal.outstandingBalance}</p>
-            )}
-            <p className="text-gray-400 mt-1">Total due: <span className="text-white font-bold">₹{showPaymentModal.monthlyAmount + showPaymentModal.outstandingBalance}</span></p>
-          </div>
-          <form onSubmit={handlePayment} className="space-y-4">
-            <div>
-              <label className={labelClass}>Amount Received (₹)</label>
-              <input type="number" min="1" required value={payForm.amount} onChange={e => setPayForm({ ...payForm, amount: e.target.value })} className={inputClass} />
+      {showPaymentModal && (() => {
+        const totalDue = showPaymentModal.outstandingBalance;
+        const payAmount = Number(payForm.amount) || 0;
+        const remaining = Math.max(0, totalDue - payAmount);
+        const isFullPay = payAmount >= totalDue && totalDue > 0;
+        const isOverpay = payAmount > totalDue && totalDue > 0;
+        const progressPct = totalDue > 0 ? Math.min(100, (payAmount / totalDue) * 100) : 0;
+
+        return (
+          <Modal title={`Record Payment — ${showPaymentModal.name}`} onClose={() => setShowPaymentModal(null)}>
+            {/* Summary Card */}
+            <div className="mb-5 rounded-xl border border-gray-700 bg-gray-800/50 overflow-hidden">
+              <div className="p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Monthly Fee</span>
+                  <span className="text-gray-300 font-medium">₹{showPaymentModal.monthlyAmount}</span>
+                </div>
+                {showPaymentModal.outstandingBalance > showPaymentModal.monthlyAmount && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-amber-400">Carried Forward</span>
+                    <span className="text-amber-400 font-medium">₹{showPaymentModal.outstandingBalance - showPaymentModal.monthlyAmount}</span>
+                  </div>
+                )}
+                <div className="border-t border-gray-700 pt-2 flex justify-between text-sm">
+                  <span className="text-white font-bold">Total Outstanding</span>
+                  <span className="text-white font-bold text-lg">₹{totalDue}</span>
+                </div>
+              </div>
+              {/* Progress bar */}
+              {payAmount > 0 && (
+                <div className="px-4 pb-3">
+                  <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${isFullPay ? 'bg-green-500' : 'bg-brand-500'}`}
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-1.5">
+                    <span className="text-[10px] text-gray-500">Paying: ₹{payAmount}</span>
+                    <span className={`text-[10px] font-medium ${isFullPay ? 'text-green-400' : 'text-amber-400'}`}>
+                      {isFullPay ? '✅ Fully Cleared' : `⚠️ ₹${remaining} remaining`}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
-            <div>
-              <label className={labelClass}>Note (optional)</label>
-              <input type="text" value={payForm.note} onChange={e => setPayForm({ ...payForm, note: e.target.value })} className={inputClass} placeholder="e.g. Cash, UPI, Card" />
-            </div>
-            <div className="flex gap-3 justify-end">
-              <button type="button" onClick={() => setShowPaymentModal(null)} className={btnGhost}>Cancel</button>
-              <button type="submit" className={btnPrimary}>Save Payment</button>
-            </div>
-          </form>
-        </Modal>
-      )}
+
+            <form onSubmit={handlePayment} className="space-y-5">
+              {/* Amount with Custom Stepper */}
+              <div>
+                <label className={labelClass}>Amount Received (₹)</label>
+                <div className="flex border border-gray-700 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-brand-500/50 focus-within:border-brand-500 transition-all bg-gray-800">
+                  <button type="button"
+                    onClick={() => setPayForm({ ...payForm, amount: String(Math.max(0, payAmount - showPaymentModal.monthlyAmount)) })}
+                    className="bg-gray-800 border-r border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700 transition w-12 shrink-0 flex items-center justify-center text-xl leading-none select-none"
+                  >−</button>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={payForm.amount}
+                    onChange={e => setPayForm({ ...payForm, amount: e.target.value })}
+                    className="w-full bg-transparent border-0 px-3 py-3 text-lg text-white text-center font-bold focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    placeholder="0"
+                  />
+                  <button type="button"
+                    onClick={() => setPayForm({ ...payForm, amount: String(payAmount + showPaymentModal.monthlyAmount) })}
+                    className="bg-gray-800 border-l border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700 transition w-12 shrink-0 flex items-center justify-center text-xl leading-none select-none"
+                  >+</button>
+                </div>
+                <p className="text-[10px] text-gray-600 mt-1">Steps of ₹{showPaymentModal.monthlyAmount} (monthly fee)</p>
+              </div>
+
+              {/* Quick Fill Buttons */}
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { label: '25%', val: Math.round(totalDue * 0.25) },
+                  { label: '50%', val: Math.round(totalDue * 0.5) },
+                  { label: '75%', val: Math.round(totalDue * 0.75) },
+                  { label: 'Full', val: totalDue },
+                ].map(btn => (
+                  <button
+                    key={btn.label}
+                    type="button"
+                    onClick={() => setPayForm({ ...payForm, amount: String(btn.val) })}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      payAmount === btn.val
+                        ? 'bg-brand-500/20 text-brand-400 border-brand-500/40'
+                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-white hover:border-gray-500'
+                    }`}
+                  >
+                    {btn.label} — ₹{btn.val}
+                  </button>
+                ))}
+              </div>
+
+              {/* Live Preview */}
+              {payAmount > 0 && (
+                <div className={`rounded-lg p-3 border text-sm ${
+                  isFullPay
+                    ? 'bg-green-500/5 border-green-500/20 text-green-400'
+                    : 'bg-amber-500/5 border-amber-500/20 text-amber-400'
+                }`}>
+                  {isOverpay ? (
+                    <p>⚠️ Overpaying by ₹{payAmount - totalDue}. Balance will be cleared to ₹0.</p>
+                  ) : isFullPay ? (
+                    <p>✅ Full payment — balance cleared, plan extended by 30 days.</p>
+                  ) : (
+                    <p>💰 Partial payment — ₹{remaining} will remain outstanding.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Note */}
+              <div>
+                <label className={labelClass}>Note (optional)</label>
+                <input type="text" value={payForm.note} onChange={e => setPayForm({ ...payForm, note: e.target.value })} className={inputClass} placeholder="e.g. Cash, UPI, Card" />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 justify-end pt-2 border-t border-gray-800">
+                <button type="button" onClick={() => setShowPaymentModal(null)} className={btnGhost}>Cancel</button>
+                <button type="submit" disabled={payAmount <= 0} className={`${btnPrimary} disabled:opacity-40`}>
+                  {isFullPay ? '✅ Clear Balance' : `💰 Record ₹${payAmount || 0}`}
+                </button>
+              </div>
+            </form>
+          </Modal>
+        );
+      })()}
 
       {/* ── Due Date Modal ────────────────────────────────────────── */}
       {showDueDateModal && (

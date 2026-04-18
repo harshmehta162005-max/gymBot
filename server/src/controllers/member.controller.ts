@@ -262,13 +262,47 @@ export const recordPartialPayment = asyncHandler(async (req: Request, res: Respo
 
   await member.save();
 
-  await logActivity({ memberId: member._id.toString(), memberName: member.name, action: 'payment_received', amount, note: `${isFullPayment ? 'Full' : 'Partial'} payment. ${note || ''}`.trim() });
+  const logNote = isFullPayment
+    ? `Full payment — balance cleared. ${note || ''}`.trim()
+    : `Partial payment — ₹${member.outstandingBalance} remaining. ${note || ''}`.trim();
 
-  // Send WhatsApp receipt if opted in
+  await logActivity({ memberId: member._id.toString(), memberName: member.name, action: 'payment_received', amount, note: logNote });
+
+  // Send WhatsApp receipt
   try {
-    const receiptMsg = isFullPayment
-      ? `✅ ₹${amount} received — your plan is now active until ${member.endDate.toLocaleDateString('en-IN')}. Thank you!`
-      : `💰 ₹${amount} received. Remaining balance: ₹${member.outstandingBalance}. Please clear dues soon!`;
+    const paidDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const dueDate = member.endDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    let receiptMsg: string;
+    if (isFullPayment) {
+      receiptMsg = [
+        `✅ *Payment Received*`,
+        ``,
+        `Hi ${member.name},`,
+        `Your payment has been received successfully.`,
+        ``,
+        `💰 *Amount Paid:* ₹${amount}`,
+        `📅 *Paid On:* ${paidDate}`,
+        `📆 *Plan Valid Till:* ${dueDate}`,
+        `🏋️ *Status:* Active — All Clear`,
+        ``,
+        `Thank you for the payment! 💪`,
+      ].join('\n');
+    } else {
+      receiptMsg = [
+        `💰 *Partial Payment Received*`,
+        ``,
+        `Hi ${member.name},`,
+        `We've received a partial payment from you.`,
+        ``,
+        `💰 *Amount Paid:* ₹${amount}`,
+        `📅 *Paid On:* ${paidDate}`,
+        `⚠️ *Pending Balance:* ₹${member.outstandingBalance}`,
+        `📆 *Next Due Date:* ${dueDate}`,
+        ``,
+        `Please clear the remaining balance of ₹${member.outstandingBalance} at the earliest. 🙏`,
+      ].join('\n');
+    }
     await sendTextMessage(member.phone, receiptMsg);
   } catch {
     // WhatsApp failure is non-blocking

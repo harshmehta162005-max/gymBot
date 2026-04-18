@@ -36,6 +36,42 @@ export const sendTextMessage = async (to: string, body: string): Promise<string 
 };
 
 /**
+ * Send a location request message — user sees a "Share Location" button.
+ * Used for live-location-based attendance marking.
+ */
+export const sendLocationRequest = async (to: string, bodyText?: string): Promise<string | null> => {
+  const formattedTo = to.startsWith('91') ? to : `91${to}`;
+  try {
+    const res = await axios.post(
+      `${getApiBase()}/messages`,
+      {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: formattedTo,
+        type: 'interactive',
+        interactive: {
+          type: 'location_request_message',
+          body: {
+            text: bodyText || '📍 Share your live location to mark attendance ✅\n\nMake sure you are inside the gym!',
+          },
+          action: { name: 'send_location' },
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${ENV.WHATSAPP_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return res.data.messages[0].id;
+  } catch (error: any) {
+    logger.error(`[WhatsApp] Failed to send location request to ${to}: ${error.response?.data?.error?.message || error.message}`);
+    return null;
+  }
+};
+
+/**
  * Send a template message (for messages outside the 24h window).
  */
 export const sendTemplateMessage = async (
