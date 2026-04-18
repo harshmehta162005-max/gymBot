@@ -26,22 +26,22 @@ const StatsCard: React.FC<StatsCardProps> = ({
   };
 
   return (
-    <div
-      className={`bg-gradient-to-br ${colorMap[color] || colorMap.brand} border rounded-xl p-6 transition-transform duration-200 hover:scale-[1.02]`}
+    <article
+      className={`bg-gradient-to-br ${colorMap[color] || colorMap.brand} border rounded-xl p-4 sm:p-6 transition-transform duration-200 hover:scale-[1.02]`}
     >
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-xs font-medium uppercase tracking-wider text-gray-400">
+      <div className="flex items-center justify-between mb-2 sm:mb-4">
+        <span className="text-[11px] sm:text-xs font-medium uppercase tracking-wider text-gray-400 leading-tight">
           {title}
         </span>
-        <Icon size={20} className="opacity-60" />
+        <Icon size={18} className="opacity-60 shrink-0" aria-hidden="true" />
       </div>
-      <p className="text-3xl font-bold text-white">{value}</p>
+      <p className="text-2xl sm:text-3xl font-bold text-white">{value}</p>
       {trend && (
-        <p className={`text-xs mt-2 ${trendUp ? 'text-green-400' : 'text-red-400'}`}>
+        <p className={`text-xs mt-1.5 sm:mt-2 ${trendUp ? 'text-green-400' : 'text-red-400'}`}>
           {trendUp ? '↑' : '↓'} {trend}
         </p>
       )}
-    </div>
+    </article>
   );
 };
 

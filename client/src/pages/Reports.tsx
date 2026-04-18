@@ -56,7 +56,7 @@ const Reports: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Reports</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Reports</h1>
         <p className="text-gray-500 text-sm mt-1">Export your data to CSV</p>
       </div>
 
@@ -67,8 +67,8 @@ const Reports: React.FC = () => {
           { type: 'attendance', title: 'Attendance Log', desc: 'Detailed log of all QR and WhatsApp check-ins.' },
         ].map(module => (
           <div key={module.type} className="bg-gray-900 border border-gray-800 rounded-xl p-6 flex flex-col items-center text-center">
-            <div className="h-12 w-12 rounded-full bg-brand-500/10 flex items-center justify-center text-brand-400 mb-4">
-              <FileText size={24} />
+            <div className="h-14 w-14 rounded-full bg-brand-500/10 flex items-center justify-center text-brand-400 mb-4">
+              <FileText size={28} />
             </div>
             <h3 className="text-lg font-semibold text-white mb-2">{module.title}</h3>
             <p className="text-sm text-gray-400 mb-6 flex-1">
@@ -77,9 +77,9 @@ const Reports: React.FC = () => {
             <button
               onClick={() => downloadCSV(module.type as any)}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-brand-500 hover:border-brand-500 text-white border border-gray-700 px-4 py-3 sm:py-2.5 rounded-lg text-sm font-medium transition-all min-h-[48px] sm:min-h-0 disabled:opacity-50"
             >
-              <Download size={16} /> Export CSV
+              <Download size={16} /> Export {module.title.split(' ')[0]}
             </button>
           </div>
         ))}

@@ -226,10 +226,10 @@ const Payments: React.FC = () => {
   }, [activeAction]);
 
   // Premium utility classes
-  const inputClass = "w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all placeholder-gray-500";
-  const labelClass = "block text-xs font-semibold tracking-wider text-gray-400 uppercase mb-2";
-  const btnGhost = "px-4 py-2.5 rounded-lg text-sm font-semibold text-gray-400 hover:text-white hover:bg-gray-800 transition-colors";
-  const btnPrimary = "bg-brand-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-lg shadow-brand-500/20 hover:bg-brand-400 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0";
+  const inputClass = "w-full bg-gray-800 border-2 border-gray-700 rounded-lg px-4 py-3 sm:py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all placeholder-gray-500 min-h-[48px] sm:min-h-0 min-h-[48px] sm:min-h-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+  const labelClass = "block text-[11px] sm:text-xs font-semibold tracking-wider text-gray-400 uppercase mb-2";
+  const btnGhost = "px-4 py-3 sm:py-2.5 rounded-lg text-sm font-semibold text-gray-400 hover:text-white hover:bg-gray-800 transition-colors min-h-[48px] sm:min-h-0";
+  const btnPrimary = "bg-brand-500 text-white px-5 py-3 sm:py-2.5 rounded-lg text-sm font-bold shadow-lg shadow-brand-500/20 hover:bg-brand-400 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 flex justify-center items-center gap-2 min-h-[48px] sm:min-h-0";
 
   return (
     <div className="space-y-6">
@@ -246,9 +246,9 @@ const Payments: React.FC = () => {
         </button>
       </div>
 
-      {/* ── Desktop Toolbar ───────────────────────────────────────── */}
+      {/* ── Desktop/Mobile Toolbar ───────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 w-full sm:max-w-md">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
@@ -258,7 +258,7 @@ const Payments: React.FC = () => {
             className="w-full bg-gray-900 border-2 border-gray-800 rounded-xl pl-11 pr-4 py-3 text-sm text-white focus:outline-none focus:border-brand-500 focus:bg-gray-800 transition-all shadow-sm"
           />
         </div>
-        <div className="relative flex-1 max-w-[200px]">
+        <div className="relative flex-1 w-full sm:max-w-[200px]">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -278,9 +278,10 @@ const Payments: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Table ─────────────────────────────────────────────────── */}
+      {/* ── Table (Desktop) / Cards (Mobile) ─────────────────────────────────────────────────── */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-2xl">
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-[11px] text-gray-500 font-bold uppercase tracking-wider border-b border-gray-800 bg-gray-900/50">
@@ -395,6 +396,89 @@ const Payments: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* ── Mobile Card View ─────────────────────────────────────── */}
+        <div className="lg:hidden divide-y divide-gray-800/60">
+          {loading ? (
+            <div className="p-8 flex justify-center">
+              <span className="animate-pulse text-gray-400">Loading secure payments...</span>
+            </div>
+          ) : filteredPayments.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              <LinkIcon size={32} className="mb-3 text-gray-600 mx-auto" />
+              <p className="text-sm font-medium">No payment links found</p>
+            </div>
+          ) : (
+            filteredPayments.map((p) => (
+              <article key={p._id} className="p-4 space-y-3 relative group">
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 pr-8">
+                    <p className="font-semibold text-white tracking-wide truncate">{p.memberId?.name || 'Deleted Member'}</p>
+                    <p className="text-xs text-gray-500 font-medium">{p.memberId?.phone || 'Unknown'}</p>
+                  </div>
+                  <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-widest uppercase shadow-sm ${
+                    p.status === 'paid' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                    p.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                    'bg-red-500/10 text-red-400 border border-red-500/20'
+                  }`}>{p.status}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <div>
+                    <span className="text-gray-500 text-[11px] uppercase tracking-wider font-semibold block mb-0.5">Amount</span>
+                    <p className="text-gray-300 font-medium">₹{p.amount.toLocaleString('en-IN')}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-[11px] uppercase tracking-wider font-semibold block mb-0.5">Link</span>
+                    <p>
+                      {p.razorpayLinkUrl ? (
+                        <a href={p.razorpayLinkUrl} target="_blank" rel="noreferrer" className="text-brand-400 hover:text-brand-300 flex items-center gap-1 font-medium transition-colors">
+                          Open <ExternalLink size={12} strokeWidth={2.5} />
+                        </a>
+                      ) : <span className="text-gray-600">—</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-[11px] uppercase tracking-wider font-semibold block mb-0.5">Generated</span>
+                    <p className="text-gray-400 text-xs font-medium">{new Date(p.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-[11px] uppercase tracking-wider font-semibold block mb-0.5">Paid At</span>
+                    <p className="text-gray-400 text-xs font-medium">
+                      {p.paidAt ? (
+                         <span className="flex items-center gap-1 text-green-400"><CheckCircle2 size={12} strokeWidth={3} /> {new Date(p.paidAt).toLocaleDateString('en-IN')}</span>
+                      ) : <span className="text-gray-600">—</span>}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="absolute top-2 right-2">
+                  <button onClick={(e) => { e.stopPropagation(); setActiveAction(activeAction === p._id ? null : p._id); }}
+                    className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-gray-800 transition-all min-h-[44px] min-w-[44px] flex justify-center items-center">
+                    <MoreVertical size={16} />
+                  </button>
+                  {activeAction === p._id && (
+                    <div className="absolute right-0 top-10 z-50 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl py-1.5 w-40" onClick={e => e.stopPropagation()}>
+                      {p.status === 'pending' && (
+                        <>
+                          <button onClick={() => handleResend(p)} className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-gray-700">
+                            <Send size={14} /> Resend
+                          </button>
+                          <button onClick={() => handleCancelPayment(p)} className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-amber-400 hover:text-amber-300 hover:bg-gray-700">
+                            <XCircle size={14} /> Cancel
+                          </button>
+                        </>
+                      )}
+                      <button onClick={() => handleDeletePayment(p)} className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-red-400 hover:text-red-300 hover:bg-gray-700">
+                        <Trash2 size={14} /> Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </article>
+            ))
+          )}
         </div>
       </div>
 

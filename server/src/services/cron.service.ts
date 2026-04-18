@@ -141,15 +141,31 @@ export async function runReminderJob(): Promise<void> {
 }
 
 /**
- * Start the cron scheduler.
- * Fires at 8:00 AM IST daily (configurable via Owner.reminderTime in future).
+ * Start the cron scheduler to run every minute and check if the current time matches owner.reminderTime.
  */
 export function startCronJobs(): void {
+  // Run every minute
   cron.schedule(
-    '0 8 * * *',
+    '* * * * *',
     async () => {
       try {
-        await runReminderJob();
+        const owner = await Owner.findOne();
+        if (!owner || !owner.reminderEnabled || !owner.reminderTime) return;
+
+        // Get current time in Asia/Kolkata
+        const now = new Date();
+        const options: Intl.DateTimeFormatOptions = { 
+          timeZone: 'Asia/Kolkata', 
+          hour12: false, 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        };
+        const currentIST = now.toLocaleTimeString('en-IN', options);
+
+        if (currentIST === owner.reminderTime) {
+          logger.info(`Scheduled time matched (${currentIST} IST) — running reminder job`);
+          await runReminderJob();
+        }
       } catch (error) {
         logger.error('Cron reminder job crashed', error);
       }
@@ -157,5 +173,5 @@ export function startCronJobs(): void {
     { timezone: 'Asia/Kolkata' }
   );
 
-  logger.info('Cron scheduler started — reminders at 8:00 AM IST daily');
+  logger.info('Cron scheduler started — checks reminder time dynamically every minute in IST');
 }

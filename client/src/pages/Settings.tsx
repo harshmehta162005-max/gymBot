@@ -9,8 +9,8 @@ import {
 } from 'lucide-react';
 
 // ─── Shared Styles ────────────────────────────────────────────────────
-const inputClass = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
-const labelClass = 'block text-xs font-medium text-gray-400 mb-1.5';
+const inputClass = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 sm:py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all min-h-[48px] sm:min-h-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
+const labelClass = 'block text-xs sm:text-xs font-medium text-gray-400 mb-1.5';
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // ─── Custom Time Picker ───────────────────────────────────────────────
@@ -96,11 +96,11 @@ const Section: React.FC<{
 }> = ({ title, description, icon, accentColor = 'from-brand-500/60 via-brand-400/30', children }) => (
   <div className="rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden">
     <div className={`h-[2px] bg-gradient-to-r ${accentColor} to-transparent`} />
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="flex items-start gap-3 mb-5">
         <div className="p-2.5 rounded-xl bg-gray-800 text-brand-400 shrink-0">{icon}</div>
-        <div>
-          <h3 className="text-base font-bold text-white">{title}</h3>
+        <div className="min-w-0">
+          <h3 className="text-sm sm:text-base font-bold text-white">{title}</h3>
           <p className="text-xs text-gray-500 mt-0.5">{description}</p>
         </div>
       </div>
@@ -116,7 +116,7 @@ const Toggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void; label
   <div className="flex items-center justify-between py-2">
     <div>
       <p className="text-sm text-white font-medium">{label}</p>
-      {description && <p className="text-[11px] text-gray-500 mt-0.5">{description}</p>}
+      {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
     </div>
     <button
       type="button"
@@ -246,8 +246,8 @@ const Settings: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <SettingsIcon size={24} className="text-brand-400" /> Settings
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+            <SettingsIcon size={22} className="text-brand-400" /> Settings
           </h1>
           <p className="text-gray-500 text-sm mt-1">Configure your gym, payments, attendance, and notifications</p>
         </div>
@@ -299,7 +299,7 @@ const Settings: React.FC = () => {
 
           <div className="space-y-3">
             {(settings.businessShifts || [{ open: '06:00', close: '22:00', label: 'Full Day' }]).map((shift: any, idx: number) => (
-              <div key={idx} className="flex items-end gap-3 p-3 rounded-xl bg-gray-800/50 border border-gray-700/50">
+              <div key={idx} className="flex flex-col sm:flex-row sm:items-end gap-3 p-3 rounded-xl bg-gray-800/50 border border-gray-700/50">
                 <div className="flex-1 min-w-0">
                   <label className={labelClass}>Label</label>
                   <input type="text" value={shift.label || ''} onChange={e => updateShift(idx, 'label', e.target.value)} className={inputClass} placeholder="e.g. Morning" />
@@ -313,8 +313,9 @@ const Settings: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => removeShift(idx)}
-                  className="p-2.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0 mb-0.5"
+                  className="p-2.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0 self-end sm:mb-0.5 min-h-[44px] flex items-center justify-center"
                   title="Remove shift"
+                  aria-label="Remove shift"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -347,9 +348,9 @@ const Settings: React.FC = () => {
             <input type="text" value={settings.gymAddress || ''} onChange={e => update('gymAddress', e.target.value)} className={inputClass} placeholder="e.g. Sector 62, Noida, UP" />
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <button type="button" onClick={handleGetLocation} disabled={locating}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-all disabled:opacity-50">
+              className="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-lg text-sm font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-all disabled:opacity-50 min-h-[48px] w-full sm:w-auto">
               {locating ? <Loader2 size={14} className="animate-spin" /> : <Navigation size={14} />}
               {locating ? 'Detecting...' : '📍 Use My Current Location'}
             </button>
@@ -378,7 +379,7 @@ const Settings: React.FC = () => {
             <input type="range" min={10} max={500} step={5} value={settings.gymRadius || 75} onChange={e => update('gymRadius', parseInt(e.target.value))}
               className="w-full h-2 bg-gray-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-brand-500 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-brand-300 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:cursor-pointer"
             />
-            <div className="flex justify-between text-[10px] text-gray-600 mt-1">
+            <div className="flex justify-between text-xs text-gray-600 mt-1">
               <span>10m (Tight)</span><span>75m (Default)</span><span>500m (Loose)</span>
             </div>
           </div>
@@ -400,7 +401,7 @@ const Settings: React.FC = () => {
           <div>
             <label className={labelClass}>Default Monthly Fee (₹)</label>
             <input type="text" value={settings.defaultMonthlyFee || ''} onChange={e => update('defaultMonthlyFee', parseInt(e.target.value) || 0)} className={inputClass} placeholder="500" />
-            <p className="text-[10px] text-gray-600 mt-1">Auto-fills when adding new members</p>
+            <p className="text-xs text-gray-600 mt-1">Auto-fills when adding new members</p>
           </div>
           <div>
             <label className={labelClass}>Currency</label>
@@ -416,7 +417,7 @@ const Settings: React.FC = () => {
           <div>
             <label className={labelClass}>Grace Period (days)</label>
             <input type="text" value={settings.gracePeriodDays ?? 3} onChange={e => update('gracePeriodDays', parseInt(e.target.value) || 0)} className={inputClass} />
-            <p className="text-[10px] text-gray-600 mt-1">Days after due date before reminders start</p>
+            <p className="text-xs text-gray-600 mt-1">Days after due date before reminders start</p>
           </div>
         </div>
       </Section>
@@ -445,7 +446,7 @@ const Settings: React.FC = () => {
                       }`}>{day}d</button>
                   ))}
                 </div>
-                <p className="text-[10px] text-gray-600 mt-1.5">Active: {(settings.defaultReminderDays || [1, 3, 7]).join(', ')} days before due</p>
+                <p className="text-xs text-gray-600 mt-1.5">Active: {(settings.defaultReminderDays || [1, 3, 7]).join(', ')} days before due</p>
               </div>
 
               {/* After Due Date */}
@@ -463,7 +464,7 @@ const Settings: React.FC = () => {
                       }`}>{day}d</button>
                   ))}
                 </div>
-                <p className="text-[10px] text-gray-600 mt-1.5">Active: {(settings.afterDueReminderDays || [1, 3, 7]).join(', ')} days after expiry</p>
+                <p className="text-xs text-gray-600 mt-1.5">Active: {(settings.afterDueReminderDays || [1, 3, 7]).join(', ')} days after expiry</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -602,21 +603,21 @@ const Settings: React.FC = () => {
       {/* FLOATING SAVE BAR */}
       {/* ══════════════════════════════════════════════════════════════ */}
       {dirty && (
-        <div className="fixed bottom-0 left-64 right-0 z-50">
-          <div className="bg-gray-900/95 backdrop-blur-lg border-t border-gray-800 px-8 py-4">
-            <div className="max-w-6xl mx-auto flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <AlertTriangle size={16} className="text-amber-400" />
-                <p className="text-sm text-amber-400 font-medium">You have unsaved changes</p>
+        <div className="fixed bottom-0 left-0 lg:left-64 right-0 z-50">
+          <div className="bg-gray-900/95 backdrop-blur-lg border-t border-gray-800 px-4 sm:px-8 py-3 sm:py-4">
+            <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <AlertTriangle size={16} className="text-amber-400 shrink-0" />
+                <p className="text-sm text-amber-400 font-medium">Unsaved changes</p>
               </div>
               <div className="flex gap-3">
                 <button onClick={() => { fetchSettings(); setDirty(false); }}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 transition-all">
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 transition-all min-h-[48px] sm:min-h-0">
                   <RotateCcw size={14} /> Discard
                 </button>
                 <button onClick={handleSave} disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white transition-all shadow-lg shadow-brand-500/20">
-                  <Save size={14} /> {saving ? 'Saving...' : 'Save Changes'}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-3 sm:py-2.5 rounded-lg text-sm font-bold bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white transition-all shadow-lg shadow-brand-500/20 min-h-[48px] sm:min-h-0">
+                  <Save size={14} /> {saving ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>

@@ -41,6 +41,9 @@ interface Member {
   outstandingBalance: number;
   lastPartialPaymentDate: string | null;
   notes: { _id: string; text: string; createdAt: string; context: string }[];
+  currentStreak: number;
+  longestStreak: number;
+  lastAttendanceDate: string | null;
 }
 
 interface Pagination {
@@ -73,15 +76,15 @@ function hasOutstanding(m: Member) {
 }
 
 // ─── Input class (DRY) ──────────────────────────────────────────────
-const inputClass = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all';
+const inputClass = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 sm:py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all min-h-[48px] sm:min-h-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
 const labelClass = 'block text-xs font-medium text-gray-400 mb-1.5';
-const btnPrimary = 'bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors';
-const btnGhost = 'px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white transition-colors';
+const btnPrimary = 'bg-brand-500 hover:bg-brand-600 text-white px-4 py-3 sm:py-2 rounded-lg text-sm font-medium transition-colors min-h-[48px] sm:min-h-0';
+const btnGhost = 'px-4 py-3 sm:py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white transition-colors min-h-[48px] sm:min-h-0';
 
 // ─── Modal Wrapper ───────────────────────────────────────────────────
 const Modal: React.FC<{ title: string; onClose: () => void; children: React.ReactNode }> = ({ title, onClose, children }) => (
   <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-    <div className="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    <div className="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-md mx-4 p-4 sm:p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-white">{title}</h2>
         <button onClick={onClose} className="text-gray-500 hover:text-white"><X size={20} /></button>
@@ -525,9 +528,10 @@ const Members: React.FC = () => {
         )}
       </div>
 
-      {/* ── Table ─────────────────────────────────────────────────── */}
+      {/* ── Table (desktop) / Cards (mobile) ──────────────────── */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
@@ -669,6 +673,102 @@ const Members: React.FC = () => {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* ── Mobile Card View ─────────────────────────────────────── */}
+        <div className="lg:hidden divide-y divide-gray-800">
+          {loading ? (
+            <div className="p-8 flex justify-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-brand-500" />
+            </div>
+          ) : members.length === 0 ? (
+            <div className="p-8 text-center text-gray-600 text-sm">No members found.</div>
+          ) : members.map(m => {
+            const ps = getPaymentStatus(m);
+            const muted = isMuted(m);
+            return (
+              <article key={m._id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Checkbox checked={selectedIds.has(m._id)} onChange={() => toggleSelect(m._id)} />
+                    <div className="min-w-0">
+                      <p className="font-medium text-white text-sm truncate">{m.name}</p>
+                      <p className="text-xs text-gray-500">{m.phone}</p>
+                    </div>
+                    {muted && (
+                      <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-orange-500/10 text-orange-400"><BellOff size={10} /></span>
+                    )}
+                  </div>
+                  <button onClick={(e) => {
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    setDropdownPos({ x: Math.min(rect.right - 208, window.innerWidth - 220), y: rect.bottom + 4 });
+                    setActiveDropdown(activeDropdown === m._id ? null : m._id);
+                  }} className="text-gray-500 hover:text-white p-2 rounded-lg hover:bg-gray-800 min-h-[44px] min-w-[44px] flex items-center justify-center">
+                    <MoreVertical size={16} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <div>
+                    <span className="text-gray-500 text-xs">Plan</span>
+                    <p className="text-gray-300">{m.planType}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-xs">Fee</span>
+                    <p className="text-gray-300 font-medium">₹{m.monthlyAmount}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-xs">Status</span>
+                    <p><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${m.status === 'active' ? 'bg-green-500/10 text-green-400' : m.status === 'frozen' ? 'bg-blue-500/10 text-blue-400' : 'bg-red-500/10 text-red-400'}`}>{m.status}</span></p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-xs">Payment</span>
+                    <p><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${ps.color}`}>{ps.label}</span></p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-xs">Expires</span>
+                    <p className="text-gray-400 text-xs">{new Date(m.endDate).toLocaleDateString('en-IN')}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-xs">Streak</span>
+                    <p className="flex items-center gap-1">
+                      <span>{(m.currentStreak || 0) >= 7 ? '🔥🔥' : (m.currentStreak || 0) >= 3 ? '🔥' : '💪'}</span>
+                      <span className="font-bold text-white text-sm">{m.currentStreak || 0}</span>
+                    </p>
+                  </div>
+                </div>
+
+                {activeDropdown === m._id && (
+                  <div style={{ position: 'fixed', left: Math.min(dropdownPos.x, window.innerWidth - 220), top: Math.min(dropdownPos.y, window.innerHeight - 340), zIndex: 9999 }}
+                    className="w-52 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl py-1">
+                    <button onClick={() => { setShowPaymentModal(m); setPayForm({ amount: '', note: '' }); setActiveDropdown(null); }}
+                      className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700 hover:text-white">
+                      <CreditCard size={14} /> Record Payment
+                    </button>
+                    {m.outstandingBalance > 0 && (
+                      <button onClick={() => { handleFullPayment(m); setActiveDropdown(null); }}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-green-400 hover:bg-gray-700">
+                        <CheckCircle2 size={14} /> Mark Full Payment
+                      </button>
+                    )}
+                    <button onClick={() => { setShowMuteModal(m); setMuteForm({ mutedUntil: '', note: '', indefinite: false }); setActiveDropdown(null); }}
+                      className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700 hover:text-white">
+                      {isMuted(m) ? <Bell size={14} /> : <BellOff size={14} />}
+                      {isMuted(m) ? 'Unmute' : 'Mute Reminders'}
+                    </button>
+                    <button onClick={() => { setShowDueDateModal(m); setDueDateForm({ endDate: m.endDate.split('T')[0], note: '' }); setActiveDropdown(null); }}
+                      className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-300 hover:bg-gray-700 hover:text-white">
+                      <CalendarClock size={14} /> Change Due Date
+                    </button>
+                    <div className="border-t border-gray-700 my-1" />
+                    <button onClick={() => { handleDelete(m._id); setActiveDropdown(null); }}
+                      className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10">
+                      <Trash2 size={14} /> Delete
+                    </button>
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
 
         {/* ── Pagination ──────────────────────────────────────────── */}

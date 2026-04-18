@@ -134,19 +134,19 @@ const Attendance: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Attendance</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Attendance</h1>
           <p className="text-gray-500 text-sm mt-1">Live location check-ins & streak tracking</p>
         </div>
 
         {/* Manual Mark */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full md:w-auto">
           <select
             value={selectedMemberId}
             onChange={(e) => setSelectedMemberId(e.target.value)}
             style={{ colorScheme: 'dark' }}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white focus:ring-2 focus:ring-brand-500/50 appearance-none max-w-[200px]"
+            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-3 sm:py-2.5 text-sm text-white focus:ring-2 focus:ring-brand-500/50 appearance-none min-h-[48px] sm:min-h-0 md:max-w-[200px]"
           >
             <option value="">Select Member</option>
             {members.map((m: any) => (
@@ -156,7 +156,7 @@ const Attendance: React.FC = () => {
           <button
             onClick={handleManualMark}
             disabled={marking || !selectedMemberId}
-            className="px-4 py-2.5 rounded-lg text-sm font-medium bg-brand-500 hover:bg-brand-600 disabled:opacity-40 text-white transition-all"
+            className="px-4 py-3 sm:py-2.5 rounded-lg text-sm font-medium bg-brand-500 hover:bg-brand-600 disabled:opacity-40 text-white transition-all min-h-[48px] sm:min-h-0 whitespace-nowrap"
           >
             {marking ? '...' : '✋ Mark'}
           </button>
@@ -240,7 +240,7 @@ const Attendance: React.FC = () => {
             placeholder="Search by member name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-gray-900 border border-gray-800 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+            className="w-full bg-gray-900 border border-gray-800 rounded-lg pl-10 pr-4 py-3 sm:py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 min-h-[48px] sm:min-h-0"
           />
         </div>
         <button
@@ -249,7 +249,7 @@ const Attendance: React.FC = () => {
             hasActiveFilters
               ? 'text-brand-400 bg-brand-500/10 border-brand-500/30'
               : 'text-gray-400 hover:text-white bg-gray-900 border-gray-800'
-          }`}
+          } min-h-[48px] sm:min-h-0 w-full sm:w-auto justify-center`}
         >
           <Filter size={16} /> Filters
           {hasActiveFilters && <span className="w-2 h-2 rounded-full bg-brand-400" />}
@@ -282,7 +282,7 @@ const Attendance: React.FC = () => {
                     value={methodFilter}
                     onChange={(e) => setMethodFilter(e.target.value)}
                     style={{ colorScheme: 'dark' }}
-                    className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/40 appearance-none ${
+                    className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/40 appearance-none min-h-[48px] sm:min-h-0 ${
                       methodFilter ? 'bg-gray-800 border-2 border-brand-500/50' : 'bg-gray-800 border border-gray-700'
                     }`}
                   >
@@ -302,7 +302,7 @@ const Attendance: React.FC = () => {
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                     style={{ colorScheme: 'dark' }}
-                    className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/40 appearance-none ${
+                    className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/40 appearance-none min-h-[48px] sm:min-h-0 ${
                       statusFilter ? 'bg-gray-800 border-2 border-brand-500/50' : 'bg-gray-800 border border-gray-700'
                     }`}
                   >
@@ -393,6 +393,64 @@ const Attendance: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* ── Mobile Card View ─────────────────────────────────────── */}
+        <div className="lg:hidden divide-y divide-gray-800/60">
+          {loading ? (
+            <div className="p-8 flex justify-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-brand-500" />
+            </div>
+          ) : filteredRecords.length === 0 ? (
+            <div className="p-8 text-center">
+              <CalendarCheck size={32} className="mx-auto text-gray-600 mb-2" />
+              <p className="text-sm text-gray-500">No attendance records found</p>
+            </div>
+          ) : (
+            filteredRecords.map((a: any) => (
+              <article key={a._id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 pr-4">
+                    <p className="font-medium text-white truncate">{a.memberId?.name || 'Unknown'}</p>
+                    <p className="text-[11px] text-gray-500">{a.memberId?.phone || ''}</p>
+                  </div>
+                  <div className="shrink-0 flex flex-col items-end gap-1">
+                    <span className="text-gray-400 text-[11px] font-medium leading-none">
+                      {new Date(a.date).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span className="text-gray-500 text-[10px] leading-none">
+                      {new Date(a.date).toLocaleString('en-IN', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
+                  <div>
+                    <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Method</span>
+                    <MethodBadge method={a.method} />
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Status</span>
+                    <StatusBadge status={a.status || 'success'} />
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Distance</span>
+                    {a.distance_m != null ? (
+                      <span className={`font-medium text-xs ${a.status === 'success' ? 'text-green-400' : 'text-red-400'}`}>{a.distance_m}m</span>
+                    ) : <span className="text-gray-600 font-bold">—</span>}
+                  </div>
+                  <div>
+                     <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Streak</span>
+                     {a.memberId?.currentStreak != null ? (
+                        <StreakBadge streak={a.memberId.currentStreak} best={a.memberId.longestStreak} />
+                      ) : (
+                        <span className="text-gray-600 font-bold">—</span>
+                      )}
+                  </div>
+                </div>
+              </article>
+            ))
+          )}
         </div>
       </div>
     </div>
