@@ -21,6 +21,32 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // --- Client Side Validation ---
+    if (isRegister) {
+      const phoneDigits = form.phone.replace(/\D/g, '');
+      if (phoneDigits.length !== 10) {
+        toast.error('Invalid mobile number. Must be exactly 10 digits.');
+        return;
+      }
+      
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(form.email.trim())) {
+        toast.error('Please enter a valid email address.');
+        return;
+      }
+
+      if (form.password.length < 6) {
+        toast.error('Password must be at least 6 characters long.');
+        return;
+      }
+    } else {
+      if (!form.email.trim() || !form.password) {
+        toast.error('Email and password are required.');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -192,6 +218,7 @@ const Login: React.FC = () => {
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className={inputClass}
                 placeholder="owner@gym.com"
+                autoComplete={isRegister ? "off" : "email"}
               />
             </div>
 
@@ -204,6 +231,7 @@ const Login: React.FC = () => {
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 className={inputClass}
                 placeholder="••••••••"
+                autoComplete={isRegister ? "new-password" : "current-password"}
               />
             </div>
 
@@ -219,7 +247,10 @@ const Login: React.FC = () => {
           <p className="text-center text-xs text-gray-500 mt-6">
             {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
             <button
-              onClick={() => setIsRegister(!isRegister)}
+              onClick={() => {
+                setIsRegister(!isRegister);
+                setForm({ email: '', password: '', gymName: '', phone: '', gymAddress: '', gymLat: '', gymLon: '' });
+              }}
               className="text-brand-400 hover:text-brand-300 font-medium"
             >
               {isRegister ? 'Sign In' : 'Register'}

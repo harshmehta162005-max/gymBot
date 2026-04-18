@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
 import Navbar from './components/Navbar';
@@ -19,7 +19,7 @@ const AppLayout = () => {
   return (
     <div className="flex min-h-screen bg-gray-950">
       <Navbar />
-      <main className="flex-1 lg:ml-64 pt-14 lg:pt-0 px-4 sm:px-6 lg:px-8 py-6 lg:py-8 overflow-y-auto h-screen">
+      <main className="flex-1 lg:ml-64 pt-14 lg:pt-10 px-4 sm:px-6 lg:px-8 py-6 lg:pb-8 overflow-y-auto h-screen">
         <div className="max-w-6xl mx-auto">
           <Outlet />
         </div>
@@ -32,7 +32,7 @@ function App() {
   return (
     <Router>
       <Toaster 
-        position="top-right" 
+        position="top-center" 
         toastOptions={{
           style: {
             background: '#1f2937',
@@ -54,6 +54,9 @@ function App() {
           <Route path="/history" element={<History />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
+
+        {/* Catch-all: redirect to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

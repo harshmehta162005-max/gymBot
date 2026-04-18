@@ -168,8 +168,8 @@ const History: React.FC = () => {
       </div>
 
       {/* ── Search + Filter Bar ────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <div className="relative flex-1 w-full">
+      <div className="flex flex-col gap-3">
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
@@ -182,7 +182,7 @@ const History: React.FC = () => {
 
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-all ${
+          className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-all ${
             hasActiveFilters
               ? 'text-brand-400 bg-brand-500/10 border-brand-500/30'
               : 'text-gray-400 hover:text-white bg-gray-900 border-gray-800'

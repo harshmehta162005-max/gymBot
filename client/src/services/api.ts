@@ -24,7 +24,7 @@ api.interceptors.response.use(
     if (error.response) {
       const { status, data } = error.response;
 
-      if (status === 401) {
+      if (status === 401 && !error.config.url?.includes('/auth/')) {
         localStorage.removeItem('gw_token');
         localStorage.removeItem('gw_owner');
         window.location.href = '/login';
