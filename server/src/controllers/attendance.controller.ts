@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import Attendance from '../models/Attendance.model.js';
 import Member from '../models/Member.model.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -10,8 +11,9 @@ import { logActivity } from './activity.controller.js';
  * List attendance records, optionally filtered by memberId or date range.
  */
 export const getAttendance = asyncHandler(async (req: Request, res: Response) => {
+  const ownerId = req.owner!.ownerId;
   const { memberId, from, to, status, method } = req.query;
-  const filter: any = {};
+  const filter: any = { ownerId };
 
   if (memberId) filter.memberId = memberId;
   if (status) filter.status = status;
@@ -35,9 +37,10 @@ export const getAttendance = asyncHandler(async (req: Request, res: Response) =>
  * Mark attendance manually (from dashboard).
  */
 export const markAttendance = asyncHandler(async (req: Request, res: Response) => {
+  const ownerId = req.owner!.ownerId;
   const { memberId, method } = req.body;
 
-  const member = await Member.findById(memberId);
+  const member = await Member.findOne({ _id: memberId, ownerId });
   if (!member) {
     res.status(404).json({ success: false, message: 'Member not found', code: 'NOT_FOUND' });
     return;
@@ -51,6 +54,7 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
 
   const existing = await Attendance.findOne({
     memberId,
+    ownerId,
     date: { $gte: today, $lt: tomorrow },
     status: 'success',
   });
@@ -61,6 +65,7 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
   }
 
   const record = await Attendance.create({
+    ownerId,
     memberId,
     date: new Date(),
     method: method || 'manual',
@@ -88,6 +93,7 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
   }
 
   await logActivity({
+    ownerId,
     memberId: member._id.toString(),
     memberName: member.name,
     action: 'note_added',
@@ -123,6 +129,7 @@ export const scanAttendance = asyncHandler(async (req: Request, res: Response) =
 
   const existing = await Attendance.findOne({
     memberId,
+    ownerId: member.ownerId,
     date: { $gte: today, $lt: tomorrow },
     status: 'success',
   });
@@ -133,6 +140,7 @@ export const scanAttendance = asyncHandler(async (req: Request, res: Response) =
   }
 
   await Attendance.create({
+    ownerId: member.ownerId,
     memberId,
     date: new Date(),
     method: 'qr-scan',
@@ -163,7 +171,8 @@ export const scanAttendance = asyncHandler(async (req: Request, res: Response) =
  * GET /api/attendance/stats
  * Dashboard stats: today count, week count, top streaks, method breakdown.
  */
-export const getAttendanceStats = asyncHandler(async (_req: Request, res: Response) => {
+export const getAttendanceStats = asyncHandler(async (req: Request, res: Response) => {
+  const ownerId = req.owner!.ownerId;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -174,17 +183,17 @@ export const getAttendanceStats = asyncHandler(async (_req: Request, res: Respon
 
   const [todayCount, weekCount, topStreaks, methodBreakdown] = await Promise.all([
     // Today's check-ins
-    Attendance.countDocuments({ date: { $gte: today, $lt: tomorrow }, status: 'success' }),
+    Attendance.countDocuments({ ownerId, date: { $gte: today, $lt: tomorrow }, status: 'success' }),
     // This week
-    Attendance.countDocuments({ date: { $gte: weekAgo }, status: 'success' }),
+    Attendance.countDocuments({ ownerId, date: { $gte: weekAgo }, status: 'success' }),
     // Top 5 current streaks
-    Member.find({ currentStreak: { $gt: 0 } })
+    Member.find({ ownerId, currentStreak: { $gt: 0 } })
       .sort({ currentStreak: -1 })
       .limit(5)
       .select('name currentStreak longestStreak'),
     // Method breakdown for today
     Attendance.aggregate([
-      { $match: { date: { $gte: today, $lt: tomorrow }, status: 'success' } },
+      { $match: { ownerId: new mongoose.Types.ObjectId(ownerId), date: { $gte: today, $lt: tomorrow }, status: 'success' } },
       { $group: { _id: '$method', count: { $sum: 1 } } },
     ]),
   ]);

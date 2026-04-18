@@ -8,6 +8,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
  * Query: ?search=harsh&action=payment_received&range=7d&page=1&limit=30
  */
 export const getActivityLogs = asyncHandler(async (req: Request, res: Response) => {
+  const ownerId = req.owner!.ownerId;
   const {
     search,
     action,
@@ -16,7 +17,7 @@ export const getActivityLogs = asyncHandler(async (req: Request, res: Response) 
     limit = '30',
   } = req.query as Record<string, string>;
 
-  const filter: any = {};
+  const filter: any = { ownerId };
 
   // Search by member name
   if (search) {
@@ -76,8 +77,8 @@ export const getActivityLogs = asyncHandler(async (req: Request, res: Response) 
  * DELETE /api/activity
  * Clear all activity logs.
  */
-export const clearActivityLogs = asyncHandler(async (_req: Request, res: Response) => {
-  const result = await ActivityLog.deleteMany({});
+export const clearActivityLogs = asyncHandler(async (req: Request, res: Response) => {
+  const result = await ActivityLog.deleteMany({ ownerId: req.owner!.ownerId });
   res.json({ success: true, message: `${result.deletedCount} activity log(s) cleared` });
 });
 
@@ -85,6 +86,7 @@ export const clearActivityLogs = asyncHandler(async (_req: Request, res: Respons
  * Helper: Log an activity. Called from other controllers.
  */
 export async function logActivity(data: {
+  ownerId: string;
   memberId?: string | null;
   memberName: string;
   action: string;
@@ -94,6 +96,7 @@ export async function logActivity(data: {
 }): Promise<void> {
   try {
     await ActivityLog.create({
+      ownerId: data.ownerId,
       memberId: data.memberId || null,
       memberName: data.memberName,
       action: data.action,

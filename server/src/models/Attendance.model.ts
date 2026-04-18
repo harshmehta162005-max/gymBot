@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IAttendance extends Document {
+  ownerId: Types.ObjectId;
   memberId: Types.ObjectId;
   date: Date;
   method: 'whatsapp-location' | 'whatsapp-reply' | 'qr-scan' | 'manual';
@@ -14,6 +15,12 @@ export interface IAttendance extends Document {
 
 const AttendanceSchema = new Schema<IAttendance>(
   {
+    ownerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Owner',
+      required: true,
+      index: true,
+    },
     memberId: {
       type: Schema.Types.ObjectId,
       ref: 'Member',

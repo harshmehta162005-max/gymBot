@@ -78,63 +78,63 @@ async function processBatch(
 export async function runReminderJob(): Promise<void> {
   logger.info('Reminder job started');
 
-  // Fetch owner settings
-  const owner = await Owner.findOne();
-  if (!owner) {
-    logger.info('No owner found — skipping reminders');
+  // Fetch all owners
+  const owners = await Owner.find();
+  if (!owners.length) {
+    logger.info('No owners found — skipping reminders');
     return;
   }
 
-  // Check if reminders are enabled
-  if (owner.reminderEnabled === false) {
-    logger.info('Reminders are disabled in settings — skipping');
-    return;
-  }
-
-  const gymName = owner.gymName || 'GymWaBot';
-  const langMap: Record<string, 'en' | 'hi' | 'hinglish'> = { english: 'en', hindi: 'hi', hinglish: 'hinglish' };
-  const language = langMap[owner.reminderLanguage] || 'hinglish';
-  const beforeDueDays = owner.defaultReminderDays?.length ? owner.defaultReminderDays : FALLBACK_REMINDER_DAYS;
-  const afterDueDays = owner.afterDueReminderDays?.length ? owner.afterDueReminderDays : FALLBACK_REMINDER_DAYS;
-
-  // Find all active members who are NOT muted
-  const eligibleMembers = await Member.find({
-    status: { $in: ['active', 'expired'] },
-    whatsappOptIn: true,
-    $or: [
-      { mutedUntil: null },
-      { mutedUntil: { $lte: new Date() } },
-    ],
-  });
-
-  const membersToRemind = eligibleMembers.filter((member) => {
-    const daysLeft = Math.ceil(
-      (member.endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-    );
-
-    if (daysLeft > 0) {
-      // BEFORE due date
-      const reminderDays =
-        member.customReminderDays && member.customReminderDays.length > 0
-          ? member.customReminderDays
-          : beforeDueDays;
-      return reminderDays.includes(daysLeft);
-    } else {
-      // AFTER due date (daysLeft is 0 or negative)
-      const daysOverdue = Math.abs(daysLeft);
-      return afterDueDays.includes(daysOverdue);
+  for (const owner of owners) {
+    // Check if reminders are enabled
+    if (owner.reminderEnabled === false) {
+      continue;
     }
-  });
 
-  logger.info(`Found ${membersToRemind.length} members due for reminders (out of ${eligibleMembers.length} eligible)`);
+    const gymName = owner.gymName || 'GymWaBot';
+    const langMap: Record<string, 'en' | 'hi' | 'hinglish'> = { english: 'en', hindi: 'hi', hinglish: 'hinglish' };
+    const language = langMap[owner.reminderLanguage] || 'hinglish';
+    const beforeDueDays = owner.defaultReminderDays?.length ? owner.defaultReminderDays : FALLBACK_REMINDER_DAYS;
+    const afterDueDays = owner.afterDueReminderDays?.length ? owner.afterDueReminderDays : FALLBACK_REMINDER_DAYS;
 
-  if (membersToRemind.length === 0) return;
+    // Find eligible members for THIS owner
+    const eligibleMembers = await Member.find({
+      ownerId: owner._id,
+      status: { $in: ['active', 'expired'] },
+      whatsappOptIn: true,
+      $or: [
+        { mutedUntil: null },
+        { mutedUntil: { $lte: new Date() } },
+      ],
+    });
 
-  // Process in batches of 10
-  const BATCH_SIZE = 10;
-  for (let i = 0; i < membersToRemind.length; i += BATCH_SIZE) {
-    const batch = membersToRemind.slice(i, i + BATCH_SIZE);
-    await processBatch(batch, gymName, language);
+    const membersToRemind = eligibleMembers.filter((member) => {
+      const daysLeft = Math.ceil(
+        (member.endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      );
+
+      if (daysLeft > 0) {
+        const reminderDays =
+          member.customReminderDays && member.customReminderDays.length > 0
+            ? member.customReminderDays
+            : beforeDueDays;
+        return reminderDays.includes(daysLeft);
+      } else {
+        const daysOverdue = Math.abs(daysLeft);
+        return afterDueDays.includes(daysOverdue);
+      }
+    });
+
+    logger.info(`[${gymName}] Found ${membersToRemind.length} members due for reminders (out of ${eligibleMembers.length} eligible)`);
+
+    if (membersToRemind.length === 0) continue;
+
+    // Process in batches of 10
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < membersToRemind.length; i += BATCH_SIZE) {
+      const batch = membersToRemind.slice(i, i + BATCH_SIZE);
+      await processBatch(batch, gymName, language);
+    }
   }
 
   logger.info('Reminder job completed');
@@ -149,8 +149,8 @@ export function startCronJobs(): void {
     '* * * * *',
     async () => {
       try {
-        const owner = await Owner.findOne();
-        if (!owner || !owner.reminderEnabled || !owner.reminderTime) return;
+        const owners = await Owner.find({ reminderEnabled: true, reminderTime: { $exists: true, $ne: null } });
+        if (!owners.length) return;
 
         // Get current time in Asia/Kolkata
         const now = new Date();
@@ -162,8 +162,9 @@ export function startCronJobs(): void {
         };
         const currentIST = now.toLocaleTimeString('en-IN', options);
 
-        if (currentIST === owner.reminderTime) {
-          logger.info(`Scheduled time matched (${currentIST} IST) — running reminder job`);
+        const matchingOwners = owners.filter(o => o.reminderTime === currentIST);
+        if (matchingOwners.length > 0) {
+          logger.info(`Scheduled time matched (${currentIST} IST) for ${matchingOwners.length} owner(s) — running reminder job`);
           await runReminderJob();
         }
       } catch (error) {

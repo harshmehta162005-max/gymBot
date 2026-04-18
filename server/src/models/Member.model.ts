@@ -19,6 +19,7 @@ const NoteSchema = new Schema<INote>(
 );
 
 export interface IMember extends Document {
+  ownerId: Types.ObjectId;
   name: string;
   phone: string;
   planType: string;
@@ -49,6 +50,12 @@ export interface IMember extends Document {
 
 const MemberSchema = new Schema<IMember>(
   {
+    ownerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Owner',
+      required: true,
+      index: true,
+    },
     name: {
       type: String,
       required: true,
@@ -57,7 +64,6 @@ const MemberSchema = new Schema<IMember>(
     phone: {
       type: String,
       required: true,
-      unique: true,
       index: true,
       trim: true,
     },
@@ -150,7 +156,8 @@ MemberSchema.pre('save', function (next) {
 });
 
 // Compound indexes for production query performance
-MemberSchema.index({ status: 1, endDate: 1 });
+MemberSchema.index({ ownerId: 1, phone: 1 }, { unique: true });
+MemberSchema.index({ ownerId: 1, status: 1, endDate: 1 });
 MemberSchema.index({ outstandingBalance: 1 });
 MemberSchema.index({ mutedUntil: 1 });
 

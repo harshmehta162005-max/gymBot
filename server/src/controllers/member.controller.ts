@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import Member from '../models/Member.model.js';
 import Payment from '../models/Payment.model.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -14,6 +15,7 @@ export const DEFAULT_REMINDER_DAYS = [1, 3, 7];
  * Query params: ?status=active&payment=overdue&muted=true&search=rahul&sort=endDate&order=asc&page=1&limit=20
  */
 export const getMembers = asyncHandler(async (req: Request, res: Response) => {
+  const ownerId = req.owner!.ownerId;
   const {
     status,
     payment,
@@ -25,7 +27,7 @@ export const getMembers = asyncHandler(async (req: Request, res: Response) => {
     limit = '20',
   } = req.query as Record<string, string>;
 
-  const filter: any = {};
+  const filter: any = { ownerId };
   const andConditions: any[] = [];
 
   // Status filter
@@ -90,7 +92,7 @@ export const getMembers = asyncHandler(async (req: Request, res: Response) => {
  * Get a single member by ID.
  */
 export const getMember = asyncHandler(async (req: Request, res: Response) => {
-  const member = await Member.findById(req.params.id);
+  const member = await Member.findOne({ _id: req.params.id, ownerId: req.owner!.ownerId });
   if (!member) {
     res.status(404).json({ success: false, message: 'Member not found', code: 'NOT_FOUND' });
     return;
@@ -103,6 +105,7 @@ export const getMember = asyncHandler(async (req: Request, res: Response) => {
  * Create a new member (with monthlyAmount, optional notes).
  */
 export const createMember = asyncHandler(async (req: Request, res: Response) => {
+  const ownerId = req.owner!.ownerId;
   const { name, phone, planType, monthlyAmount, startDate, endDate, whatsappOptIn, note, outstandingBalance } = req.body;
 
   if (!monthlyAmount || monthlyAmount <= 0) {
@@ -110,7 +113,7 @@ export const createMember = asyncHandler(async (req: Request, res: Response) => 
     return;
   }
 
-  const existing = await Member.findOne({ phone });
+  const existing = await Member.findOne({ phone, ownerId });
   if (existing) {
     res.status(400).json({ success: false, message: 'Phone number already registered', code: 'DUPLICATE' });
     return;
@@ -121,6 +124,7 @@ export const createMember = asyncHandler(async (req: Request, res: Response) => 
   trialEnd.setDate(trialEnd.getDate() + 7);
 
   const member = await Member.create({
+    ownerId,
     name,
     phone,
     planType,
@@ -133,7 +137,7 @@ export const createMember = asyncHandler(async (req: Request, res: Response) => 
     notes: note ? [{ text: note, context: 'registration' }] : [],
   });
 
-  await logActivity({ memberId: member._id.toString(), memberName: name, action: 'member_added', amount: outstandingBalance ?? 0, note: note || `Plan: ${planType}, ₹${monthlyAmount}/mo` });
+  await logActivity({ ownerId, memberId: member._id.toString(), memberName: name, action: 'member_added', amount: outstandingBalance ?? 0, note: note || `Plan: ${planType}, ₹${monthlyAmount}/mo` });
 
   res.status(201).json({ success: true, data: member });
 });
@@ -146,7 +150,7 @@ export const updateMember = asyncHandler(async (req: Request, res: Response) => 
   // Don't allow direct manipulation of notes via generic update — use dedicated endpoint
   const { notes, ...updateData } = req.body;
 
-  const member = await Member.findByIdAndUpdate(req.params.id, updateData, {
+  const member = await Member.findOneAndUpdate({ _id: req.params.id, ownerId: req.owner!.ownerId }, updateData, {
     new: true,
     runValidators: true,
   });
@@ -164,12 +168,12 @@ export const updateMember = asyncHandler(async (req: Request, res: Response) => 
  * Delete a member.
  */
 export const deleteMember = asyncHandler(async (req: Request, res: Response) => {
-  const member = await Member.findByIdAndDelete(req.params.id);
+  const member = await Member.findOneAndDelete({ _id: req.params.id, ownerId: req.owner!.ownerId });
   if (!member) {
     res.status(404).json({ success: false, message: 'Member not found', code: 'NOT_FOUND' });
     return;
   }
-  await logActivity({ memberId: null, memberName: member.name, action: 'member_deleted', note: `Phone: ${member.phone}` });
+  await logActivity({ ownerId: req.owner!.ownerId, memberId: null, memberName: member.name, action: 'member_deleted', note: `Phone: ${member.phone}` });
   res.json({ success: true, message: 'Member deleted' });
 });
 
@@ -181,7 +185,7 @@ export const deleteMember = asyncHandler(async (req: Request, res: Response) => 
 export const muteMember = asyncHandler(async (req: Request, res: Response) => {
   const { mutedUntil, note } = req.body;
 
-  const member = await Member.findById(req.params.id);
+  const member = await Member.findOne({ _id: req.params.id, ownerId: req.owner!.ownerId });
   if (!member) {
     res.status(404).json({ success: false, message: 'Member not found', code: 'NOT_FOUND' });
     return;
@@ -201,7 +205,7 @@ export const muteMember = asyncHandler(async (req: Request, res: Response) => {
 
   await member.save();
 
-  await logActivity({ memberId: member._id.toString(), memberName: member.name, action: 'mute_changed', note: muteText });
+  await logActivity({ ownerId: req.owner!.ownerId, memberId: member._id.toString(), memberName: member.name, action: 'mute_changed', note: muteText });
 
   res.json({ success: true, data: member });
 });
@@ -219,7 +223,7 @@ export const recordPartialPayment = asyncHandler(async (req: Request, res: Respo
     return;
   }
 
-  const member = await Member.findById(req.params.id);
+  const member = await Member.findOne({ _id: req.params.id, ownerId: req.owner!.ownerId });
   if (!member) {
     res.status(404).json({ success: false, message: 'Member not found', code: 'NOT_FOUND' });
     return;
@@ -266,7 +270,7 @@ export const recordPartialPayment = asyncHandler(async (req: Request, res: Respo
     ? `Full payment — balance cleared. ${note || ''}`.trim()
     : `Partial payment — ₹${member.outstandingBalance} remaining. ${note || ''}`.trim();
 
-  await logActivity({ memberId: member._id.toString(), memberName: member.name, action: 'payment_received', amount, note: logNote });
+  await logActivity({ ownerId: req.owner!.ownerId, memberId: member._id.toString(), memberName: member.name, action: 'payment_received', amount, note: logNote });
 
   // Send WhatsApp receipt
   try {
@@ -324,7 +328,7 @@ export const addNote = asyncHandler(async (req: Request, res: Response) => {
     return;
   }
 
-  const member = await Member.findById(req.params.id);
+  const member = await Member.findOne({ _id: req.params.id, ownerId: req.owner!.ownerId });
   if (!member) {
     res.status(404).json({ success: false, message: 'Member not found', code: 'NOT_FOUND' });
     return;
@@ -338,7 +342,7 @@ export const addNote = asyncHandler(async (req: Request, res: Response) => {
 
   await member.save();
 
-  await logActivity({ memberId: member._id.toString(), memberName: member.name, action: 'note_added', note: text.trim() });
+  await logActivity({ ownerId: req.owner!.ownerId, memberId: member._id.toString(), memberName: member.name, action: 'note_added', note: text.trim() });
 
   res.json({ success: true, data: member });
 });
@@ -356,7 +360,7 @@ export const updateDueDate = asyncHandler(async (req: Request, res: Response) =>
     return;
   }
 
-  const member = await Member.findById(req.params.id);
+  const member = await Member.findOne({ _id: req.params.id, ownerId: req.owner!.ownerId });
   if (!member) {
     res.status(404).json({ success: false, message: 'Member not found', code: 'NOT_FOUND' });
     return;
@@ -373,7 +377,7 @@ export const updateDueDate = asyncHandler(async (req: Request, res: Response) =>
 
   await member.save(); // pre-save hook will recalculate status
 
-  await logActivity({ memberId: member._id.toString(), memberName: member.name, action: 'due_date_changed', note: `${oldDate} → ${new Date(endDate).toLocaleDateString('en-IN')}. ${note || ''}`.trim() });
+  await logActivity({ ownerId: req.owner!.ownerId, memberId: member._id.toString(), memberName: member.name, action: 'due_date_changed', note: `${oldDate} → ${new Date(endDate).toLocaleDateString('en-IN')}. ${note || ''}`.trim() });
 
   res.json({ success: true, data: member });
 });
@@ -382,16 +386,17 @@ export const updateDueDate = asyncHandler(async (req: Request, res: Response) =>
  * GET /api/members/stats
  * Dashboard-ready aggregate stats.
  */
-export const getMemberStats = asyncHandler(async (_req: Request, res: Response) => {
+export const getMemberStats = asyncHandler(async (req: Request, res: Response) => {
+  const ownerId = req.owner!.ownerId;
   const now = new Date();
   const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const [total, active, dueThisWeek, withBalance, totalOutstanding] = await Promise.all([
-    Member.countDocuments(),
-    Member.countDocuments({ status: 'active' }),
-    Member.countDocuments({ endDate: { $gte: now, $lte: weekFromNow }, status: 'active' }),
-    Member.countDocuments({ outstandingBalance: { $gt: 0 } }),
-    Member.aggregate([{ $group: { _id: null, total: { $sum: '$outstandingBalance' } } }]),
+    Member.countDocuments({ ownerId }),
+    Member.countDocuments({ ownerId, status: 'active' }),
+    Member.countDocuments({ ownerId, endDate: { $gte: now, $lte: weekFromNow }, status: 'active' }),
+    Member.countDocuments({ ownerId, outstandingBalance: { $gt: 0 } }),
+    Member.aggregate([{ $match: { ownerId: new mongoose.Types.ObjectId(ownerId) } }, { $group: { _id: null, total: { $sum: '$outstandingBalance' } } }]),
   ]);
 
   res.json({

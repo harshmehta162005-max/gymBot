@@ -59,14 +59,13 @@ async function updateStreak(member: any): Promise<void> {
 /**
  * Get the gym owner's location config. Caches for the session.
  */
-async function getGymLocation(): Promise<{
+async function getGymLocation(ownerId: any): Promise<{
   lat: number;
   lon: number;
   radius: number;
   gymName: string;
 } | null> {
-  // Get the first owner (single-tenant)
-  const owner = await Owner.findOne();
+  const owner = await Owner.findById(ownerId);
   if (!owner || owner.gymLat === null || owner.gymLon === null) {
     return null;
   }
@@ -141,7 +140,7 @@ async function handleLocationAttendance(
     return;
   }
 
-  const gymLocation = await getGymLocation();
+  const gymLocation = await getGymLocation(member.ownerId);
   if (!gymLocation) {
     await sendTextMessage(
       whatsappPhone,
@@ -187,6 +186,7 @@ async function handleLocationAttendance(
 
   // Create attendance record
   await Attendance.create({
+    ownerId: member.ownerId,
     memberId: member._id,
     date: new Date(),
     method: 'whatsapp-location',
@@ -229,6 +229,7 @@ async function handleLocationAttendance(
     );
 
     await logActivity({
+      ownerId: member.ownerId.toString(),
       memberId: member._id.toString(),
       memberName: member.name,
       action: 'note_added',
@@ -268,7 +269,11 @@ async function handleCommand(whatsappPhone: string, normalizedPhone: string, tex
 
   switch (true) {
     case text === 'hi' || text === 'hello' || text === 'menu': {
-      const owner = await Owner.findOne();
+      if (!member) {
+        await sendTextMessage(whatsappPhone, '❌ You are not registered with any gym on our platform. Please contact your gym owner.');
+        return;
+      }
+      const owner = await Owner.findById(member.ownerId);
       const gName = owner?.gymName || 'GymWaBot';
 
       // If owner has a custom welcome message, send that first
@@ -348,8 +353,15 @@ async function handleCommand(whatsappPhone: string, normalizedPhone: string, tex
     }
 
     default: {
+      if (!member) {
+         await sendTextMessage(
+          whatsappPhone,
+          '❌ You are not registered with any gym on our platform. Please contact your gym owner.'
+        );
+        return;
+      }
       // Respect autoReply setting
-      const ownerCfg = await Owner.findOne();
+      const ownerCfg = await Owner.findById(member.ownerId);
       if (ownerCfg?.autoReplyEnabled === false) break; // silent skip
       await sendTextMessage(
         whatsappPhone,

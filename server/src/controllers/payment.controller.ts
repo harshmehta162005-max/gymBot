@@ -13,7 +13,8 @@ import { logActivity } from './activity.controller.js';
  * List all payments, populated with member name.
  */
 export const getPayments = asyncHandler(async (req: Request, res: Response) => {
-  const payments = await Payment.find().populate('memberId', 'name phone').sort({ createdAt: -1 });
+  const ownerId = req.owner!.ownerId;
+  const payments = await Payment.find({ ownerId }).populate('memberId', 'name phone').sort({ createdAt: -1 });
   res.json({ success: true, data: payments });
 });
 
@@ -22,9 +23,10 @@ export const getPayments = asyncHandler(async (req: Request, res: Response) => {
  * Create a Razorpay UPI payment link for a member and store it.
  */
 export const createPayment = asyncHandler(async (req: Request, res: Response) => {
+  const ownerId = req.owner!.ownerId;
   const { memberId, amount, description } = req.body;
 
-  const member = await Member.findById(memberId);
+  const member = await Member.findOne({ _id: memberId, ownerId });
   if (!member) {
     res.status(404).json({ success: false, message: 'Member not found', code: 'NOT_FOUND' });
     return;
@@ -47,6 +49,7 @@ export const createPayment = asyncHandler(async (req: Request, res: Response) =>
   });
 
   const payment = await Payment.create({
+    ownerId,
     memberId,
     amount,
     razorpayLinkId,
@@ -78,7 +81,7 @@ export const createPayment = asyncHandler(async (req: Request, res: Response) =>
     logger.error(`[Payment] WhatsApp send failed for ${member.phone}: ${err}`);
   }
 
-  await logActivity({ memberId: memberId, memberName: member.name, action: 'payment_created', amount, note: `Razorpay link generated` });
+  await logActivity({ ownerId, memberId: memberId, memberName: member.name, action: 'payment_created', amount, note: `Razorpay link generated` });
 
   res.status(201).json({ success: true, data: payment });
 });
@@ -136,7 +139,7 @@ export const paymentCallback = asyncHandler(async (req: Request, res: Response) 
 
       await member.save();
 
-      await logActivity({ memberId: member._id.toString(), memberName: member.name, action: 'payment_received', amount: payment.amount, note: 'Razorpay online payment' });
+      await logActivity({ ownerId: payment.ownerId?.toString(), memberId: member._id.toString(), memberName: member.name, action: 'payment_received', amount: payment.amount, note: 'Razorpay online payment' });
 
       try {
         const paidDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -172,7 +175,7 @@ export const paymentCallback = asyncHandler(async (req: Request, res: Response) 
  * Resend existing payment link via WhatsApp.
  */
 export const resendPayment = asyncHandler(async (req: Request, res: Response) => {
-  const payment = await Payment.findById(req.params.id).populate('memberId');
+  const payment = await Payment.findOne({ _id: req.params.id, ownerId: req.owner!.ownerId }).populate('memberId');
   if (!payment) {
     res.status(404).json({ success: false, message: 'Payment not found', code: 'NOT_FOUND' });
     return;
@@ -214,7 +217,7 @@ export const resendPayment = asyncHandler(async (req: Request, res: Response) =>
  * Cancel a pending payment link.
  */
 export const cancelPayment = asyncHandler(async (req: Request, res: Response) => {
-  const payment = await Payment.findById(req.params.id);
+  const payment = await Payment.findOne({ _id: req.params.id, ownerId: req.owner!.ownerId });
   if (!payment) {
     res.status(404).json({ success: false, message: 'Payment not found', code: 'NOT_FOUND' });
     return;
@@ -229,7 +232,7 @@ export const cancelPayment = asyncHandler(async (req: Request, res: Response) =>
 
   // Get member name for activity log
   const member = await Member.findById(payment.memberId);
-  await logActivity({ memberId: payment.memberId?.toString(), memberName: member?.name || 'Unknown', action: 'payment_cancelled', amount: payment.amount, note: 'Payment link cancelled' });
+  await logActivity({ ownerId: req.owner!.ownerId, memberId: payment.memberId?.toString(), memberName: member?.name || 'Unknown', action: 'payment_cancelled', amount: payment.amount, note: 'Payment link cancelled' });
 
   res.json({ success: true, data: payment });
 });
@@ -239,13 +242,13 @@ export const cancelPayment = asyncHandler(async (req: Request, res: Response) =>
  * Delete a payment record.
  */
 export const deletePayment = asyncHandler(async (req: Request, res: Response) => {
-  const payment = await Payment.findById(req.params.id);
+  const payment = await Payment.findOne({ _id: req.params.id, ownerId: req.owner!.ownerId });
   if (!payment) {
     res.status(404).json({ success: false, message: 'Payment not found', code: 'NOT_FOUND' });
     return;
   }
   const member = await Member.findById(payment.memberId);
   await payment.deleteOne();
-  await logActivity({ memberId: payment.memberId?.toString(), memberName: member?.name || 'Unknown', action: 'payment_deleted', amount: payment.amount, note: `Payment record deleted (status: ${payment.status})` });
+  await logActivity({ ownerId: req.owner!.ownerId, memberId: payment.memberId?.toString(), memberName: member?.name || 'Unknown', action: 'payment_deleted', amount: payment.amount, note: `Payment record deleted (status: ${payment.status})` });
   res.json({ success: true, message: 'Payment deleted' });
 });

@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IPayment extends Document {
+  ownerId: Types.ObjectId;
   memberId: Types.ObjectId;
   amount: number;
   razorpayLinkId: string;
@@ -14,6 +15,12 @@ export interface IPayment extends Document {
 
 const PaymentSchema = new Schema<IPayment>(
   {
+    ownerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Owner',
+      required: true,
+      index: true,
+    },
     memberId: {
       type: Schema.Types.ObjectId,
       ref: 'Member',
