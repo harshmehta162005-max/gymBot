@@ -13,9 +13,9 @@ const app = express();
 // Security headers
 app.use(helmet());
 
-// CORS — restrict to client origin in production
+// CORS — allow Vercel requests dynamically
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: true,
   credentials: true,
 }));
 
