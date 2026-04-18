@@ -1,8 +1,33 @@
-node_modules
+# ─── Dependencies ──────────────────────────
+node_modules/
+
+# ─── Environment Variables (SECRETS!) ──────
 .env
-dist
-build
+server/.env
+
+# ─── Build Output ──────────────────────────
+dist/
+build/
+client/dist/
+server/dist/
+
+# ─── IDE & OS ──────────────────────────────
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ─── Logs ──────────────────────────────────
 *.log
-coverage
-.vite
+npm-debug.log*
+
+# ─── Coverage & Testing ───────────────────
+coverage/
+
+# ─── Vite Cache ────────────────────────────
+.vite/
+
+# ─── Misc ──────────────────────────────────
+*.tsbuildinfo
