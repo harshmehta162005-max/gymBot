@@ -24,9 +24,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     passwordHash,
     gymName,
     phone,
-    gymLat: gymLat ?? null,
-    gymLon: gymLon ?? null,
-    gymRadius: gymRadius ?? 75,
+    gymLat: gymLat ? parseFloat(gymLat as string) : null,
+    gymLon: gymLon ? parseFloat(gymLon as string) : null,
+    gymRadius: gymRadius ? parseInt(gymRadius as string, 10) : 75,
     gymAddress: gymAddress || '',
   });
 
