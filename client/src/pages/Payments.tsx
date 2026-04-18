@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { ExternalLink, IndianRupee, Search, ChevronDown, CheckCircle2, AlertTriangle, Link as LinkIcon, X, MoreVertical, RefreshCw, Trash2, XCircle, Send } from 'lucide-react';
+import { ExternalLink, IndianRupee, Search, ChevronDown, CheckCircle2, AlertTriangle, Link as LinkIcon, X, MoreVertical, RefreshCw, Trash2, XCircle, Send, MessageCircle } from 'lucide-react';
+import Dropdown from '../components/Dropdown';
 
 // ─── Modal Layout ────────────────────────────────────────────────────
 const Modal: React.FC<{ title: string; onClose: () => void; children: React.ReactNode }> = ({ title, onClose, children }) => (
   <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md shadow-2xl relative overflow-hidden">
-      <div className="h-1.5 bg-gradient-to-r from-brand-500/80 to-transparent" />
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md shadow-2xl relative">
+      <div className="h-1.5 rounded-t-2xl bg-gradient-to-r from-brand-500/80 to-transparent" />
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-white tracking-tight">{title}</h2>
@@ -248,7 +249,7 @@ const Payments: React.FC = () => {
 
       {/* ── Desktop/Mobile Toolbar ───────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 w-full sm:max-w-md">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
@@ -259,22 +260,21 @@ const Payments: React.FC = () => {
           />
         </div>
         <div className="relative flex-1 w-full sm:max-w-[200px]">
-          <select
+          <Dropdown
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ colorScheme: 'dark' }}
-            className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition-all appearance-none ${
+            onChange={setStatusFilter}
+            options={[
+              { value: '', label: 'All Statuses' },
+              { value: 'paid', label: 'Paid' },
+              { value: 'pending', label: 'Pending' },
+              { value: 'expired', label: 'Expired' }
+            ]}
+            className={`w-full rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition-all ${
               statusFilter
                 ? 'bg-gray-800 border-2 border-brand-500/50 shadow-[0_0_12px_rgba(57,255,20,0.06)]'
                 : 'bg-gray-900 border-2 border-gray-800 hover:border-gray-700'
             }`}
-          >
-            <option value="">All Statuses</option>
-            <option value="paid">Paid</option>
-            <option value="pending">Pending</option>
-            <option value="expired">Expired</option>
-          </select>
-          <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          />
         </div>
       </div>
 
@@ -412,16 +412,41 @@ const Payments: React.FC = () => {
           ) : (
             filteredPayments.map((p) => (
               <article key={p._id} className="p-4 space-y-3 relative group">
-                <div className="flex items-start justify-between">
-                  <div className="min-w-0 pr-8">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 pr-2">
                     <p className="font-semibold text-white tracking-wide truncate">{p.memberId?.name || 'Deleted Member'}</p>
                     <p className="text-xs text-gray-500 font-medium">{p.memberId?.phone || 'Unknown'}</p>
                   </div>
-                  <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-widest uppercase shadow-sm ${
-                    p.status === 'paid' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
-                    p.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                    'bg-red-500/10 text-red-400 border border-red-500/20'
-                  }`}>{p.status}</span>
+                  <div className="shrink-0 flex gap-2 items-center">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-widest uppercase shadow-sm ${
+                      p.status === 'paid' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                      p.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                      'bg-red-500/10 text-red-400 border border-red-500/20'
+                    }`}>{p.status}</span>
+                    <div className="relative">
+                      <button onClick={(e) => { e.stopPropagation(); setActiveAction(activeAction === p._id ? null : p._id); }}
+                        className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-gray-800 transition-all flex justify-center items-center -mr-2">
+                        <MoreVertical size={16} />
+                      </button>
+                      {activeAction === p._id && (
+                        <div className="absolute right-0 top-10 z-50 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl py-1.5 w-40" onClick={e => e.stopPropagation()}>
+                          {p.status === 'pending' && (
+                            <>
+                              <button onClick={() => handleResend(p)} className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-gray-700">
+                                <Send size={14} /> Resend
+                              </button>
+                              <button onClick={() => handleCancelPayment(p)} className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-amber-400 hover:text-amber-300 hover:bg-gray-700">
+                                <XCircle size={14} /> Cancel
+                              </button>
+                            </>
+                          )}
+                          <button onClick={() => handleDeletePayment(p)} className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-red-400 hover:text-red-300 hover:bg-gray-700">
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -453,29 +478,7 @@ const Payments: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="absolute top-2 right-2">
-                  <button onClick={(e) => { e.stopPropagation(); setActiveAction(activeAction === p._id ? null : p._id); }}
-                    className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-gray-800 transition-all min-h-[44px] min-w-[44px] flex justify-center items-center">
-                    <MoreVertical size={16} />
-                  </button>
-                  {activeAction === p._id && (
-                    <div className="absolute right-0 top-10 z-50 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl py-1.5 w-40" onClick={e => e.stopPropagation()}>
-                      {p.status === 'pending' && (
-                        <>
-                          <button onClick={() => handleResend(p)} className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-gray-700">
-                            <Send size={14} /> Resend
-                          </button>
-                          <button onClick={() => handleCancelPayment(p)} className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-amber-400 hover:text-amber-300 hover:bg-gray-700">
-                            <XCircle size={14} /> Cancel
-                          </button>
-                        </>
-                      )}
-                      <button onClick={() => handleDeletePayment(p)} className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-red-400 hover:text-red-300 hover:bg-gray-700">
-                        <Trash2 size={14} /> Delete
-                      </button>
-                    </div>
-                  )}
-                </div>
+                {/* removed duplicated absolute block for actions */}
               </article>
             ))
           )}
@@ -497,20 +500,17 @@ const Payments: React.FC = () => {
             {/* Member Select */}
             <div>
               <label className={labelClass}>Select Member</label>
-              <div className="relative">
-                <select
-                  required
+              <div className="relative z-50">
+                <Dropdown
                   value={selectedMember}
-                  onChange={(e) => setSelectedMember(e.target.value)}
-                  style={{ colorScheme: 'dark' }}
-                  className={inputClass + ' appearance-none cursor-pointer pr-10 text-white font-medium'}
-                >
-                  <option value="" className="text-gray-500">Pick a member...</option>
-                  {members.map((m: any) => (
-                    <option key={m._id} value={m._id}>{m.name} ({m.phone}) — ₹{m.monthlyAmount}/mo</option>
-                  ))}
-                </select>
-                <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  onChange={setSelectedMember}
+                  placeholder="Pick a member..."
+                  options={members.map((m: any) => ({
+                    value: m._id,
+                    label: `${m.name} (${m.phone}) — ₹${m.monthlyAmount}/mo`
+                  }))}
+                  className={`${inputClass} font-medium`}
+                />
               </div>
             </div>
 
@@ -562,9 +562,9 @@ const Payments: React.FC = () => {
               <button
                 type="submit"
                 disabled={sending}
-                className={btnPrimary}
+                className="bg-[#25D366] text-white px-5 py-3 sm:py-2.5 rounded-lg text-sm font-bold shadow-lg shadow-[#25D366]/20 hover:bg-[#20BE5A] hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 flex justify-center items-center gap-2 min-h-[48px] sm:min-h-0"
               >
-                {sending ? 'Sending...' : 'Send WhatsApp Link'}
+                <MessageCircle size={18} /> {sending ? 'Sending...' : 'Trigger WhatsApp Link'}
               </button>
             </div>
           </form>

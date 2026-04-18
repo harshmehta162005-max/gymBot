@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import Dropdown from '../components/Dropdown';
 import {
   Search, Clock, ChevronDown, X, Trash2, ChevronLeft, ChevronRight,
   UserPlus, UserMinus, CreditCard, XCircle, Bell, BellOff, CalendarClock,
@@ -168,7 +169,7 @@ const History: React.FC = () => {
 
       {/* ── Search + Filter Bar ────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <div className="relative flex-1 w-full sm:max-w-md">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
@@ -194,8 +195,8 @@ const History: React.FC = () => {
 
       {/* ── Filter Panel ──────────────────────────────────────────── */}
       {showFilters && (
-        <div className="rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden">
-          <div className="h-[2px] bg-gradient-to-r from-brand-500/60 via-brand-400/30 to-transparent" />
+        <div className="rounded-2xl border border-gray-800 bg-gray-900 relative z-20">
+          <div className="h-[2px] rounded-t-2xl bg-gradient-to-r from-brand-500/60 via-brand-400/30 to-transparent" />
           <div className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-5">
               <p className="text-sm font-semibold text-gray-300 flex items-center gap-2">
@@ -212,44 +213,28 @@ const History: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className="block text-[11px] font-medium text-gray-500 mb-2 pl-1">Action Type</label>
-                <div className="relative">
-                  <select
-                    value={actionFilter}
-                    onChange={e => setActionFilter(e.target.value)}
-                    style={{ colorScheme: 'dark' }}
-                    className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition-all appearance-none ${
-                      actionFilter
-                        ? 'bg-gray-800 border-2 border-brand-500/50 shadow-[0_0_12px_rgba(57,255,20,0.06)]'
-                        : 'bg-gray-800 border border-gray-700 hover:border-gray-500'
-                    }`}
-                  >
-                    <option value="">All Actions</option>
-                    {ACTION_OPTIONS.map(o => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
+                <Dropdown
+                  value={actionFilter}
+                  onChange={(val) => setActionFilter(val)}
+                  options={[
+                    { value: '', label: 'All Actions' },
+                    ...ACTION_OPTIONS.map(o => ({ value: o.value, label: o.label }))
+                  ]}
+                  className={`w-full bg-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-brand-500/40 min-h-[48px] sm:min-h-0 ${
+                    actionFilter ? 'border-2 border-brand-500/50 shadow-[0_0_12px_rgba(57,255,20,0.06)]' : 'border border-gray-700 hover:border-gray-500'
+                  }`}
+                />
               </div>
               <div>
                 <label className="block text-[11px] font-medium text-gray-500 mb-2 pl-1">Time Range</label>
-                <div className="relative">
-                  <select
-                    value={rangeFilter}
-                    onChange={e => setRangeFilter(e.target.value)}
-                    style={{ colorScheme: 'dark' }}
-                    className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition-all appearance-none ${
-                      rangeFilter
-                        ? 'bg-gray-800 border-2 border-brand-500/50 shadow-[0_0_12px_rgba(57,255,20,0.06)]'
-                        : 'bg-gray-800 border border-gray-700 hover:border-gray-500'
-                    }`}
-                  >
-                    {RANGE_OPTIONS.map(o => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
+                <Dropdown
+                  value={rangeFilter}
+                  onChange={(val) => setRangeFilter(val)}
+                  options={RANGE_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
+                  className={`w-full bg-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-brand-500/40 min-h-[48px] sm:min-h-0 ${
+                    rangeFilter ? 'border-2 border-brand-500/50 shadow-[0_0_12px_rgba(57,255,20,0.06)]' : 'border border-gray-700 hover:border-gray-500'
+                  }`}
+                />
               </div>
             </div>
           </div>
@@ -257,7 +242,7 @@ const History: React.FC = () => {
       )}
 
       {/* ── Activity Timeline ─────────────────────────────────────── */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mt-4 relative z-10">
         {loading ? (
           <div className="p-12 flex flex-col items-center">
             <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-brand-500" />

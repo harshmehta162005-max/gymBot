@@ -23,3 +23,18 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #4b5563;
 }
+
+/* Hide native select arrows globally across all modern & legacy browsers */
+select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+select::-ms-expand {
+  display: none !important;
+}
+
+/* Force dark mode native inputs and scrollbars for Chrome/Edge */
+html {
+  color-scheme: dark;
+}

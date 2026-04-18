@@ -3,9 +3,10 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import {
   Search, Plus, Trash2, MoreVertical, BellOff, Bell, CreditCard,
-  CalendarClock, StickyNote, Send, ChevronLeft, ChevronRight,
-  Filter, X, AlertTriangle, CheckCircle2, Check, ChevronDown
+  Mail, TrendingUp, HelpCircle, Activity, CalendarClock, StickyNote, ChevronLeft, ChevronRight,
+  ChevronDown, ChevronUp, Filter, X, CheckCircle2, XCircle, AlertTriangle, UserMinus, Play, Pause, Check
 } from 'lucide-react';
+import Dropdown from '../components/Dropdown';
 
 // ─── Custom Checkbox ─────────────────────────────────────────────────
 const Checkbox: React.FC<{ checked: boolean; onChange: () => void; className?: string }> = ({ checked, onChange, className = '' }) => (
@@ -76,7 +77,7 @@ function hasOutstanding(m: Member) {
 }
 
 // ─── Input class (DRY) ──────────────────────────────────────────────
-const inputClass = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 sm:py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all min-h-[48px] sm:min-h-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
+const inputClass = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 sm:py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all min-h-[48px] sm:min-h-0';
 const labelClass = 'block text-xs font-medium text-gray-400 mb-1.5';
 const btnPrimary = 'bg-brand-500 hover:bg-brand-600 text-white px-4 py-3 sm:py-2 rounded-lg text-sm font-medium transition-colors min-h-[48px] sm:min-h-0';
 const btnGhost = 'px-4 py-3 sm:py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white transition-colors min-h-[48px] sm:min-h-0';
@@ -155,6 +156,14 @@ const Members: React.FC = () => {
 
   // Checkbox selection for batch actions
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Expandable Mobile Layout
+  const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set());
+  const toggleMember = (id: string) => {
+    const newSet = new Set(expandedMembers);
+    if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
+    setExpandedMembers(newSet);
+  };
 
   // Add member form
   const [form, setForm] = useState({ name: '', phone: '', planType: 'Monthly', monthlyAmount: '', durationMonths: 1, note: '' });
@@ -406,7 +415,7 @@ const Members: React.FC = () => {
               )}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center w-full sm:w-auto justify-between sm:justify-end gap-2">
             {/* Overall Payment Summary Badge */}
             {stats.totalOutstanding > 0 ? (
               <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
@@ -417,7 +426,7 @@ const Members: React.FC = () => {
                 All Clear ✓
               </span>
             )}
-            <button onClick={() => setShowAddModal(true)} className={`flex items-center gap-2 ${btnPrimary}`}>
+            <button onClick={() => setShowAddModal(true)} className={`flex items-center gap-2 shrink-0 ${btnPrimary}`}>
               <Plus size={16} /> Add Member
             </button>
           </div>
@@ -425,7 +434,7 @@ const Members: React.FC = () => {
 
         {/* ── Search + Filter + Batch Pay Bar ─────────────────────── */}
         <div className="flex flex-col sm:flex-row gap-3 mt-4 items-center">
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1 w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text" placeholder="Search by name or phone..."
@@ -434,7 +443,7 @@ const Members: React.FC = () => {
             />
           </div>
           <button onClick={() => setShowFilterPanel(!showFilterPanel)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white bg-gray-900 border border-gray-800">
+            className="flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-3 sm:py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white bg-gray-900 border border-gray-800 min-h-[48px] sm:min-h-0">
             <Filter size={16} /> Filters
             {(filters.status || filters.payment || filters.muted) && (
               <span className="w-2 h-2 rounded-full bg-brand-400" />
@@ -443,7 +452,7 @@ const Members: React.FC = () => {
           {/* Batch Pay — inline with search & filter */}
           {selectedIds.size > 0 && (
             <button onClick={handleBatchPaid}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-lg shadow-green-900/30">
+              className="flex w-full sm:w-auto items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all shadow-lg shadow-green-900/30 min-h-[48px] sm:min-h-0">
               <CreditCard size={16} /> Mark as Paid ({selectedIds.size})
             </button>
           )}
@@ -451,8 +460,8 @@ const Members: React.FC = () => {
 
         {/* ── Filter Panel ────────────────────────────────────────── */}
         {showFilterPanel && (
-          <div className="mt-3 rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden">
-            <div className="h-[2px] bg-gradient-to-r from-brand-500/60 via-brand-400/30 to-transparent" />
+          <div className="mt-3 rounded-2xl border border-gray-800 bg-gray-900 relative">
+            <div className="h-[2px] rounded-t-2xl bg-gradient-to-r from-brand-500/60 via-brand-400/30 to-transparent" />
             <div className="p-6">
               <div className="flex items-center justify-between mb-5">
                 <p className="text-sm font-semibold text-gray-300 flex items-center gap-2">
@@ -468,59 +477,50 @@ const Members: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                 <div>
                   <label className="block text-[11px] font-medium text-gray-500 mb-2 pl-1">Status</label>
-                  <div className="relative">
-                    <select value={filters.status}
-                      onChange={e => setFilters({ ...filters, status: e.target.value })}
-                      style={{ colorScheme: 'dark' }}
-                      className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition-all appearance-none ${
-                        filters.status
-                          ? 'bg-gray-800 border-2 border-brand-500/50 shadow-[0_0_12px_rgba(57,255,20,0.06)]'
-                          : 'bg-gray-800 border border-gray-700 hover:border-gray-500'
-                      }`}>
-                      <option value="">All Statuses</option>
-                      <option value="active">Active</option>
-                      <option value="frozen">Frozen</option>
-                      <option value="expired">Expired</option>
-                    </select>
-                    <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                  </div>
+                  <Dropdown
+                    value={filters.status}
+                    onChange={(val) => setFilters({ ...filters, status: val })}
+                    options={[
+                      { value: '', label: 'All Statuses' },
+                      { value: 'active', label: 'Active' },
+                      { value: 'frozen', label: 'Frozen' },
+                      { value: 'expired', label: 'Expired' },
+                    ]}
+                    className={`w-full bg-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-brand-500/40 min-h-[48px] sm:min-h-0 ${
+                      filters.status ? 'border-2 border-brand-500/50 shadow-[0_0_12px_rgba(57,255,20,0.06)]' : 'border border-gray-700 hover:border-gray-500'
+                    }`}
+                  />
                 </div>
                 <div>
                   <label className="block text-[11px] font-medium text-gray-500 mb-2 pl-1">Payment</label>
-                  <div className="relative">
-                    <select value={filters.payment}
-                      onChange={e => setFilters({ ...filters, payment: e.target.value })}
-                      style={{ colorScheme: 'dark' }}
-                      className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition-all appearance-none ${
-                        filters.payment
-                          ? 'bg-gray-800 border-2 border-brand-500/50 shadow-[0_0_12px_rgba(57,255,20,0.06)]'
-                          : 'bg-gray-800 border border-gray-700 hover:border-gray-500'
-                      }`}>
-                      <option value="">All Payments</option>
-                      <option value="full">Fully Paid</option>
-                      <option value="partial">Partial Due</option>
-                      <option value="overdue">Overdue</option>
-                    </select>
-                    <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                  </div>
+                  <Dropdown
+                    value={filters.payment}
+                    onChange={(val) => setFilters({ ...filters, payment: val })}
+                    options={[
+                      { value: '', label: 'All Payments' },
+                      { value: 'full', label: 'Fully Paid' },
+                      { value: 'partial', label: 'Partial Due' },
+                      { value: 'overdue', label: 'Overdue' },
+                    ]}
+                    className={`w-full bg-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-brand-500/40 min-h-[48px] sm:min-h-0 ${
+                      filters.payment ? 'border-2 border-brand-500/50 shadow-[0_0_12px_rgba(57,255,20,0.06)]' : 'border border-gray-700 hover:border-gray-500'
+                    }`}
+                  />
                 </div>
                 <div>
                   <label className="block text-[11px] font-medium text-gray-500 mb-2 pl-1">Alerts</label>
-                  <div className="relative">
-                    <select value={filters.muted}
-                      onChange={e => setFilters({ ...filters, muted: e.target.value })}
-                      style={{ colorScheme: 'dark' }}
-                      className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/40 transition-all appearance-none ${
-                        filters.muted
-                          ? 'bg-gray-800 border-2 border-brand-500/50 shadow-[0_0_12px_rgba(57,255,20,0.06)]'
-                          : 'bg-gray-800 border border-gray-700 hover:border-gray-500'
-                      }`}>
-                      <option value="">All Members</option>
-                      <option value="true">Muted Only</option>
-                      <option value="false">Not Muted</option>
-                    </select>
-                    <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                  </div>
+                  <Dropdown
+                    value={filters.muted}
+                    onChange={(val) => setFilters({ ...filters, muted: val })}
+                    options={[
+                      { value: '', label: 'All Members' },
+                      { value: 'true', label: 'Muted Only' },
+                      { value: 'false', label: 'Not Muted' },
+                    ]}
+                    className={`w-full bg-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-brand-500/40 min-h-[48px] sm:min-h-0 ${
+                      filters.muted ? 'border-2 border-brand-500/50 shadow-[0_0_12px_rgba(57,255,20,0.06)]' : 'border border-gray-700 hover:border-gray-500'
+                    }`}
+                  />
                 </div>
               </div>
             </div>
@@ -686,6 +686,7 @@ const Members: React.FC = () => {
           ) : members.map(m => {
             const ps = getPaymentStatus(m);
             const muted = isMuted(m);
+            const isExpanded = expandedMembers.has(m._id);
             return (
               <article key={m._id} className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
@@ -707,35 +708,49 @@ const Members: React.FC = () => {
                     <MoreVertical size={16} />
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  <div>
-                    <span className="text-gray-500 text-xs">Plan</span>
-                    <p className="text-gray-300">{m.planType}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 text-xs">Fee</span>
-                    <p className="text-gray-300 font-medium">₹{m.monthlyAmount}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 text-xs">Status</span>
-                    <p><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${m.status === 'active' ? 'bg-green-500/10 text-green-400' : m.status === 'frozen' ? 'bg-blue-500/10 text-blue-400' : 'bg-red-500/10 text-red-400'}`}>{m.status}</span></p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 text-xs">Payment</span>
-                    <p><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${ps.color}`}>{ps.label}</span></p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 text-xs">Expires</span>
-                    <p className="text-gray-400 text-xs">{new Date(m.endDate).toLocaleDateString('en-IN')}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 text-xs">Streak</span>
-                    <p className="flex items-center gap-1">
-                      <span>{(m.currentStreak || 0) >= 7 ? '🔥🔥' : (m.currentStreak || 0) >= 3 ? '🔥' : '💪'}</span>
-                      <span className="font-bold text-white text-sm">{m.currentStreak || 0}</span>
-                    </p>
-                  </div>
+                
+                <div className="flex justify-start items-center -mb-1 mt-1">
+                  <button 
+                    onClick={() => toggleMember(m._id)} 
+                    className="text-[11px] font-semibold text-brand-400 flex items-center gap-1 bg-brand-500/10 px-2 py-1 rounded-md"
+                  >
+                    {isExpanded ? 'Hide Details' : 'Show Details'}
+                    {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
                 </div>
+
+                {isExpanded && (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm bg-gray-900/50 p-3 rounded-lg border border-gray-800 mt-2 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-brand-500/30" />
+                    <div>
+                      <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Plan</span>
+                      <p className="text-gray-300 text-xs">{m.planType}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Fee</span>
+                      <p className="text-gray-300 text-xs font-medium">₹{m.monthlyAmount}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Status</span>
+                      <p><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${m.status === 'active' ? 'bg-green-500/10 text-green-400' : m.status === 'frozen' ? 'bg-blue-500/10 text-blue-400' : 'bg-red-500/10 text-red-400'}`}>{m.status}</span></p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Payment</span>
+                      <p><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${ps.color}`}>{ps.label}</span></p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Expires</span>
+                      <p className="text-gray-400 text-xs">{new Date(m.endDate).toLocaleDateString('en-IN')}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Streak</span>
+                      <p className="flex items-center gap-1 text-xs">
+                        <span>{(m.currentStreak || 0) >= 7 ? '🔥🔥' : (m.currentStreak || 0) >= 3 ? '🔥' : '💪'}</span>
+                        <span className="font-bold text-white">{m.currentStreak || 0}</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {activeDropdown === m._id && (
                   <div style={{ position: 'fixed', left: Math.min(dropdownPos.x, window.innerWidth - 220), top: Math.min(dropdownPos.y, window.innerHeight - 340), zIndex: 9999 }}
@@ -822,21 +837,20 @@ const Members: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Plan Type</label>
-                <div className="relative">
-                  <select value={form.planType} onChange={e => {
-                      const pType = e.target.value;
-                      const dMonths = pType === 'Annual' ? 12 : pType === 'Half-Yearly' ? 6 : pType === 'Quarterly' ? 3 : 1;
-                      setForm({ ...form, planType: pType, durationMonths: dMonths });
-                    }} 
-                    style={{ colorScheme: 'dark' }}
-                    className={inputClass + ' appearance-none pl-4 pr-10 cursor-pointer'}>
-                    <option value="Monthly">Monthly</option>
-                    <option value="Quarterly">Quarterly</option>
-                    <option value="Half-Yearly">Half-Yearly</option>
-                    <option value="Annual">Annual</option>
-                  </select>
-                  <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
+                <Dropdown 
+                  value={form.planType} 
+                  onChange={pType => {
+                    const dMonths = pType === 'Annual' ? 12 : pType === 'Half-Yearly' ? 6 : pType === 'Quarterly' ? 3 : 1;
+                    setForm({ ...form, planType: pType, durationMonths: dMonths });
+                  }}
+                  options={[
+                    { value: 'Monthly', label: 'Monthly' },
+                    { value: 'Quarterly', label: 'Quarterly' },
+                    { value: 'Half-Yearly', label: 'Half-Yearly' },
+                    { value: 'Annual', label: 'Annual' },
+                  ]}
+                  className={inputClass}
+                />
               </div>
               <div>
                 <label className={labelClass}>Duration (Months)</label>

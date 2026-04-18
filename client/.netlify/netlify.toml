@@ -1,3 +1,4 @@
+redirectsOrigin = "config"
 plugins = []
 headers = []
 
@@ -6,10 +7,10 @@ headers = []
 [functions."*"]
 
 [build]
-publish = "C:\\Users\\harsh\\OneDrive\\Desktop\\gymBot\\client\\dist"
-publishOrigin = "ui"
-commandOrigin = "ui"
-command = "npm --workspace client run build"
+publish = "C:\\Users\\harsh\\OneDrive\\Desktop\\gymBot\\dist"
+publishOrigin = "config"
+commandOrigin = "config"
+command = "npm run build"
 
 [build.environment]
 

@@ -7,9 +7,10 @@ import {
   Navigation, CircleDot, Flame, CheckCircle2, AlertTriangle, ChevronDown, RotateCcw,
   Plus, Trash2
 } from 'lucide-react';
+import Dropdown from '../components/Dropdown';
 
 // ─── Shared Styles ────────────────────────────────────────────────────
-const inputClass = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 sm:py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all min-h-[48px] sm:min-h-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
+const inputClass = 'w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 sm:py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all min-h-[48px] sm:min-h-0';
 const labelClass = 'block text-xs sm:text-xs font-medium text-gray-400 mb-1.5';
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -94,8 +95,8 @@ const Section: React.FC<{
   title: string; description: string; icon: React.ReactNode;
   accentColor?: string; children: React.ReactNode;
 }> = ({ title, description, icon, accentColor = 'from-brand-500/60 via-brand-400/30', children }) => (
-  <div className="rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden">
-    <div className={`h-[2px] bg-gradient-to-r ${accentColor} to-transparent`} />
+  <div className="relative rounded-2xl border border-gray-800 bg-gray-900 focus-within:z-[60]">
+    <div className={`h-[2px] rounded-t-2xl bg-gradient-to-r ${accentColor} to-transparent`} />
     <div className="p-4 sm:p-6">
       <div className="flex items-start gap-3 mb-5">
         <div className="p-2.5 rounded-xl bg-gray-800 text-brand-400 shrink-0">{icon}</div>
@@ -406,12 +407,16 @@ const Settings: React.FC = () => {
           <div>
             <label className={labelClass}>Currency</label>
             <div className="relative">
-              <select value={settings.currency || 'INR'} onChange={e => update('currency', e.target.value)} style={{ colorScheme: 'dark' }} className={`${inputClass} appearance-none pr-10 cursor-pointer`}>
-                <option value="INR">🇮🇳 INR (₹)</option>
-                <option value="USD">🇺🇸 USD ($)</option>
-                <option value="AED">🇦🇪 AED (د.إ)</option>
-              </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+              <Dropdown
+                value={settings.currency || 'INR'}
+                onChange={val => update('currency', val)}
+                options={[
+                  { value: 'INR', label: '🇮🇳 INR (₹)' },
+                  { value: 'USD', label: '🇺🇸 USD ($)' },
+                  { value: 'AED', label: '🇦🇪 AED (د.إ)' }
+                ]}
+                className={inputClass}
+              />
             </div>
           </div>
           <div>
@@ -472,12 +477,16 @@ const Settings: React.FC = () => {
                 <div>
                   <label className={labelClass}>Reminder Language</label>
                   <div className="relative">
-                    <select value={settings.reminderLanguage || 'hinglish'} onChange={e => update('reminderLanguage', e.target.value)} style={{ colorScheme: 'dark' }} className={`${inputClass} appearance-none pr-10 cursor-pointer`}>
-                      <option value="english">🇬🇧 English</option>
-                      <option value="hindi">🇮🇳 Hindi</option>
-                      <option value="hinglish">🇮🇳 Hinglish (Mixed)</option>
-                    </select>
-                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                    <Dropdown
+                      value={settings.reminderLanguage || 'hinglish'}
+                      onChange={val => update('reminderLanguage', val)}
+                      options={[
+                        { value: 'english', label: '🇬🇧 English' },
+                        { value: 'hindi', label: '🇮🇳 Hindi' },
+                        { value: 'hinglish', label: '🇮🇳 Hinglish (Mixed)' }
+                      ]}
+                      className={inputClass}
+                    />
                   </div>
                   <p className="text-[10px] text-gray-600 mt-1">Language for AI-generated reminders</p>
                 </div>

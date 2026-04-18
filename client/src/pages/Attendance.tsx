@@ -3,8 +3,9 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import {
   MapPin, Flame, Trophy, CalendarCheck, Users, Clock,
-  ChevronDown, Filter, X, Search, CheckCircle2, XCircle, AlertTriangle
+  ChevronDown, ChevronUp, Filter, X, Search, CheckCircle2, XCircle, AlertTriangle
 } from 'lucide-react';
+import Dropdown from '../components/Dropdown';
 
 // ─── Stats Card ──────────────────────────────────────────────────────
 const StatCard: React.FC<{
@@ -86,6 +87,17 @@ const Attendance: React.FC = () => {
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [marking, setMarking] = useState(false);
 
+  // Mobile layout state
+  const [visibleMobileCount, setVisibleMobileCount] = useState(5);
+  const [expandedRecords, setExpandedRecords] = useState<Set<string>>(new Set());
+
+  const toggleRecord = (id: string) => {
+    const newSet = new Set(expandedRecords);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setExpandedRecords(newSet);
+  };
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
@@ -142,17 +154,14 @@ const Attendance: React.FC = () => {
 
         {/* Manual Mark */}
         <div className="flex items-center gap-2 w-full md:w-auto">
-          <select
-            value={selectedMemberId}
-            onChange={(e) => setSelectedMemberId(e.target.value)}
-            style={{ colorScheme: 'dark' }}
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-3 sm:py-2.5 text-sm text-white focus:ring-2 focus:ring-brand-500/50 appearance-none min-h-[48px] sm:min-h-0 md:max-w-[200px]"
-          >
-            <option value="">Select Member</option>
-            {members.map((m: any) => (
-              <option key={m._id} value={m._id}>{m.name}</option>
-            ))}
-          </select>
+          <div className="flex-1 w-full md:w-[200px]">
+            <Dropdown
+              value={selectedMemberId}
+              onChange={(val) => setSelectedMemberId(val)}
+              options={[{ value: '', label: 'Select Member' }, ...members.map((m: any) => ({ value: m._id, label: m.name }))]}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-3 sm:py-2.5 text-sm text-white focus:ring-2 focus:ring-brand-500/50 min-h-[48px] sm:min-h-0"
+            />
+          </div>
           <button
             onClick={handleManualMark}
             disabled={marking || !selectedMemberId}
@@ -233,7 +242,7 @@ const Attendance: React.FC = () => {
 
       {/* ── Search + Filter Bar ────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
@@ -258,8 +267,8 @@ const Attendance: React.FC = () => {
 
       {/* ── Filter Panel ──────────────────────────────────────── */}
       {showFilters && (
-        <div className="rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden">
-          <div className="h-[2px] bg-gradient-to-r from-brand-500/60 via-brand-400/30 to-transparent" />
+        <div className="rounded-2xl border border-gray-800 bg-gray-900 relative z-20">
+          <div className="h-[2px] rounded-t-2xl bg-gradient-to-r from-brand-500/60 via-brand-400/30 to-transparent" />
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm font-semibold text-gray-300 flex items-center gap-2">
@@ -278,40 +287,38 @@ const Attendance: React.FC = () => {
               <div>
                 <label className="block text-[10px] font-medium text-gray-500 mb-1.5">Method</label>
                 <div className="relative">
-                  <select
+                  <Dropdown
                     value={methodFilter}
-                    onChange={(e) => setMethodFilter(e.target.value)}
-                    style={{ colorScheme: 'dark' }}
-                    className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/40 appearance-none min-h-[48px] sm:min-h-0 ${
-                      methodFilter ? 'bg-gray-800 border-2 border-brand-500/50' : 'bg-gray-800 border border-gray-700'
+                    onChange={(val) => setMethodFilter(val)}
+                    options={[
+                      { value: '', label: 'All Methods' },
+                      { value: 'whatsapp-location', label: '📍 Location' },
+                      { value: 'whatsapp-reply', label: '💬 WhatsApp' },
+                      { value: 'qr-scan', label: '📸 QR Scan' },
+                      { value: 'manual', label: '✋ Manual' },
+                    ]}
+                    className={`w-full bg-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-brand-500/40 min-h-[48px] sm:min-h-0 ${
+                      methodFilter ? 'border-2 border-brand-500/50' : 'border border-gray-700'
                     }`}
-                  >
-                    <option value="">All Methods</option>
-                    <option value="whatsapp-location">📍 Location</option>
-                    <option value="whatsapp-reply">💬 WhatsApp</option>
-                    <option value="qr-scan">📸 QR Scan</option>
-                    <option value="manual">✋ Manual</option>
-                  </select>
-                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  />
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] font-medium text-gray-500 mb-1.5">Status</label>
                 <div className="relative">
-                  <select
+                  <Dropdown
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    style={{ colorScheme: 'dark' }}
-                    className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/40 appearance-none min-h-[48px] sm:min-h-0 ${
-                      statusFilter ? 'bg-gray-800 border-2 border-brand-500/50' : 'bg-gray-800 border border-gray-700'
+                    onChange={(val) => setStatusFilter(val)}
+                    options={[
+                      { value: '', label: 'All Statuses' },
+                      { value: 'success', label: '✅ Inside Gym' },
+                      { value: 'outside', label: '❌ Outside' },
+                      { value: 'manual', label: '✋ Manual' },
+                    ]}
+                    className={`w-full bg-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-brand-500/40 min-h-[48px] sm:min-h-0 ${
+                      statusFilter ? 'border-2 border-brand-500/50' : 'border border-gray-700'
                     }`}
-                  >
-                    <option value="">All Statuses</option>
-                    <option value="success">✅ Inside Gym</option>
-                    <option value="outside">❌ Outside</option>
-                    <option value="manual">✋ Manual</option>
-                  </select>
-                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  />
                 </div>
               </div>
             </div>
@@ -320,8 +327,8 @@ const Attendance: React.FC = () => {
       )}
 
       {/* ── Records Table ─────────────────────────────────────── */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mt-2 relative z-10">
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-[11px] text-gray-500 uppercase tracking-wider border-b border-gray-800">
@@ -407,49 +414,74 @@ const Attendance: React.FC = () => {
               <p className="text-sm text-gray-500">No attendance records found</p>
             </div>
           ) : (
-            filteredRecords.map((a: any) => (
-              <article key={a._id} className="p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="min-w-0 pr-4">
-                    <p className="font-medium text-white truncate">{a.memberId?.name || 'Unknown'}</p>
-                    <p className="text-[11px] text-gray-500">{a.memberId?.phone || ''}</p>
-                  </div>
-                  <div className="shrink-0 flex flex-col items-end gap-1">
-                    <span className="text-gray-400 text-[11px] font-medium leading-none">
-                      {new Date(a.date).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <span className="text-gray-500 text-[10px] leading-none">
-                      {new Date(a.date).toLocaleString('en-IN', { day: 'numeric', month: 'short' })}
-                    </span>
-                  </div>
-                </div>
+            <>
+              {filteredRecords.slice(0, visibleMobileCount).map((a: any) => {
+                const isExpanded = expandedRecords.has(a._id);
+                return (
+                  <article key={a._id} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0 pr-4">
+                        <p className="font-medium text-white truncate">{a.memberId?.name || 'Unknown'}</p>
+                        <p className="text-[11px] text-gray-500">{a.memberId?.phone || ''}</p>
+                      </div>
+                      <div className="shrink-0 flex flex-col items-end gap-1">
+                        <span className="text-gray-400 text-[11px] font-medium leading-none">
+                          {new Date(a.date).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="text-gray-500 text-[10px] leading-none">
+                          {new Date(a.date).toLocaleString('en-IN', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
-                  <div>
-                    <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Method</span>
-                    <MethodBadge method={a.method} />
-                  </div>
-                  <div>
-                    <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Status</span>
-                    <StatusBadge status={a.status || 'success'} />
-                  </div>
-                  <div>
-                    <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Distance</span>
-                    {a.distance_m != null ? (
-                      <span className={`font-medium text-xs ${a.status === 'success' ? 'text-green-400' : 'text-red-400'}`}>{a.distance_m}m</span>
-                    ) : <span className="text-gray-600 font-bold">—</span>}
-                  </div>
-                  <div>
-                     <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Streak</span>
-                     {a.memberId?.currentStreak != null ? (
-                        <StreakBadge streak={a.memberId.currentStreak} best={a.memberId.longestStreak} />
-                      ) : (
-                        <span className="text-gray-600 font-bold">—</span>
-                      )}
-                  </div>
+                    <div className="flex justify-between items-center -mb-1 mt-1">
+                      <StatusBadge status={a.status || 'success'} />
+                      <button 
+                        onClick={() => toggleRecord(a._id)} 
+                        className="text-[11px] font-semibold text-brand-400 flex items-center gap-1 bg-brand-500/10 px-2 py-1 rounded-md"
+                      >
+                        {isExpanded ? 'Hide Details' : 'Show Details'}
+                        {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      </button>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm bg-gray-900/50 p-3 rounded-lg border border-gray-800 mt-3 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-brand-500/30" />
+                        <div>
+                          <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Method</span>
+                          <MethodBadge method={a.method} />
+                        </div>
+                        <div>
+                          <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-0.5">Distance</span>
+                          {a.distance_m != null ? (
+                            <span className={`font-medium text-xs ${a.status === 'success' ? 'text-green-400' : 'text-red-400'}`}>{a.distance_m}m</span>
+                          ) : <span className="text-gray-600 font-bold">—</span>}
+                        </div>
+                        <div className="col-span-2 pt-1 border-t border-gray-800/60">
+                           <span className="text-gray-500 text-[10px] uppercase font-semibold block mb-1">Streak Progress</span>
+                           {a.memberId?.currentStreak != null ? (
+                              <StreakBadge streak={a.memberId.currentStreak} best={a.memberId.longestStreak} />
+                            ) : (
+                              <span className="text-gray-600 font-bold">—</span>
+                            )}
+                        </div>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+              {visibleMobileCount < filteredRecords.length && (
+                <div className="p-4 flex justify-center">
+                  <button 
+                    onClick={() => setVisibleMobileCount(prev => prev + 5)}
+                    className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-sm font-semibold transition-all border border-gray-700 hover:border-gray-600"
+                  >
+                    Load More ({filteredRecords.length - visibleMobileCount} remaining)
+                  </button>
                 </div>
-              </article>
-            ))
+              )}
+            </>
           )}
         </div>
       </div>
